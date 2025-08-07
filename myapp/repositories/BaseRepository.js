@@ -18,12 +18,19 @@ class BaseRepository {
         return rows[0] || null;
     }
 
-    async findByEmail(Email) {
-        const [rows] = await this.db.promise().query(
-            `SELECT * FROM ${this.table} WHERE id = ?`,
-            [Email]
-        );
-        return rows[0] || null;
+    async findByEmail(email) {
+        try {
+            const [rows] = await this.db.promise().query(
+                `SELECT * FROM ${this.table} WHERE email = ?`,
+                [email]
+            );
+            return rows[0] || null;
+        }
+        catch (error) {
+            console.error('Repository: Find by email error:', error);
+            throw error;
+        }
+
     }
 
     async create(data) {
@@ -42,4 +49,4 @@ class BaseRepository {
 
 }
 
-module.exports = BaseRepository;
+export default BaseRepository;

@@ -1,21 +1,165 @@
+import UserRepository from '../repositories/userRepository.js';
+const userRepository = new UserRepository();
+import bcrypt from 'bcryptjs';
+class UserService {
+    async signup(data) {
+        const { email, password } = data;
 
-const userRepo = require('../repositories/userRepository')
+        console.log(email, password);
 
-const createUser = async (name, email) => {
-    const exists = await userRepo.findByEmail(email);
-    if (exists) {
-        throw new Error('DUPLICATE_EMAIL');
+        // Validate input
+        if (!password || !email) {
+            const error = new Error('password and email are required');
+            error.statusCode = 400;
+            throw error;
+        }
+
+        // Check if user already exists
+        const existingUser = await userRepository.findByEmail(email);
+        if (existingUser) {
+            const error = new Error('User with this email already exists');
+            error.statusCode = 400;
+            throw error;
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Create user
+        const user = await userRepository.create({ email, password: hashedPassword });
+
+        return {
+            message: 'User created successfully',
+            user: user
+        };
     }
-    const user = await userRepo.create({ name, email });
-    return user;
-};
 
 
-const getAllUsers = async () => {
-    return await userRepo.findAll();
-};
+    async getAllUsers() {
+        try {
+            const users = await userRepository.findAll();
+            return users;
+        } catch (error) {
+            console.error('Service: Get all users error:', error);
+            const serviceError = new Error('Failed to fetch users');
+            serviceError.statusCode = 500;
+            throw serviceError;
+        }
+    }
 
-module.exports = {
-    getAllUsers,
-    createUser
-};
+    async getUserById(id) {
+        if (!id) {
+            const error = new Error('User ID is required');
+            error.statusCode = 400;
+            throw error;
+        }
+
+        try {
+            const user = await userRepository.findById(id);
+            if (!user) {
+                const error = new Error('User not found');
+                error.statusCode = 404;
+                throw error;
+            }
+            return user;
+        } catch (error) {
+            if (error.statusCode) {
+                throw error; // Re-throw custom errors
+            }
+            console.error('Service: Get user by ID error:', error);
+            const serviceError = new Error('Failed to fetch user');
+            serviceError.statusCode = 500;
+            throw serviceError;
+        }
+    }
+
+    async updateUser(id, userData) {
+        if (!id) {
+            const error = new Error('User ID is required');
+            error.statusCode = 400;
+            throw error;
+        }
+
+        if (!userData || Object.keys(userData).length === 0) {
+            const error = new Error('Update data is required');
+            error.statusCode = 400;
+            throw error;
+        }
+
+        try {
+            // Check if user exists
+            const existingUser = await userRepository.findById(id);
+            if (!existingUser) {
+                const error = new Error('User not found');
+                error.statusCode = 404;
+                throw error;
+            }
+
+            // If email is being updated, check for duplicates
+            if (userData.email && userData.email !== existingUser.email) {
+                const emailExists = await userRepository.findByEmail(userData.email);
+                if (emailExists) {
+                    const error = new Error('Email already exists');
+                    error.statusCode = 400;
+                    throw error;
+                }
+            }
+
+            const result = await userRepository.update(id, userData);
+            return {
+                message: 'User updated successfully',
+                data: result
+            };
+        } catch (error) {
+            if (error.statusCode) {
+                throw error; // Re-throw custom errors
+            }
+            console.error('Service: Update user error:', error);
+            const serviceError = new Error('Failed to update user');
+            serviceError.statusCode = 500;
+            throw serviceError;
+        }
+    }
+
+    async deleteUser(id) {
+        if (!id) {
+            const error = new Error('User ID is required');
+            error.statusCode = 400;
+            throw error;
+        }
+
+        try {
+            // Check if user exists
+            const existingUser = await userRepository.findById(id);
+            if (!existingUser) {
+                const error = new Error('User not found');
+                error.statusCode = 404;
+                throw error;
+            }
+
+            const result = await userRepository.delete(id);
+            return {
+                message: 'User deleted successfully',
+                data: result
+            };
+        } catch (error) {
+            if (error.statusCode) {
+                throw error; // Re-throw custom errors
+            }
+            console.error('Service: Delete user error:', error);
+            const serviceError = new Error('Failed to delete user');
+            serviceError.statusCode = 500;
+            throw serviceError;
+        }
+    }
+}
+
+export default new UserService();
+
+
+
+
+
+
+
+
+

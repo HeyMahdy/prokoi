@@ -1,9 +1,11 @@
-const express = require('express');
+import express from 'express';
+import { swaggerUi, swaggerSpec } from './config/swagger.js'
 const app = express();
-const usersRoutes = require('./routes/users');
+import usersRoutes from './routes/users.js';
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(express.json());
-app.use('/users', usersRoutes);
+app.use('/auth', usersRoutes);
 
 const PORT = 8000;
 app.listen(PORT, () => {

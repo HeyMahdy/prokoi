@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Hello from GitHub",
   "main": "myapp/app.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon myapp/app.js"
@@ -19,9 +20,13 @@
   },
   "homepage": "https://github.com/HeyMahdy/prokoi#readme",
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.14.3",
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   }
 }

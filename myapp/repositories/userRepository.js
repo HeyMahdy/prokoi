@@ -1,13 +1,15 @@
-const db = require('../db/connection');
-const baseRepository = require('./BaseRepository')
+import db from '../db/connection.js';
+import baseRepository from './BaseRepository.js';
 
 
 class UserRepository extends baseRepository {
 
     constructor() {
-        super('users', db);
+        super('user', db);
     }
+
+
 
 }
 
-module.exports = new UserRepository();
+export default UserRepository;
