@@ -33,6 +33,21 @@ class BaseRepository {
 
     }
 
+    async findByColumnsAndGetId(col_data, col_name, table_name) {
+        try {
+            const [rows] = await this.db.promise().query(
+                `SELECT * FROM ${table_name} WHERE ${col_name} = ?`,
+                [col_data]
+            );
+            if (rows.length === 0) return null;  // no row found
+            return { id: rows[0].id };           // return id of first matching row
+        }
+        catch (error) {
+            console.error('Repository: Find by column error:', error);
+            throw error;
+        }
+    }
+
     async create(data) {
         const keys = Object.keys(data).join(',');
         const values = Object.values(data);

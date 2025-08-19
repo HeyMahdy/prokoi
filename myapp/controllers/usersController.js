@@ -5,7 +5,7 @@ import authService from '../service/authService.js';
 class AuthController {
     static async signup(req, res) {
         try {
-            const result = await userService.signup(req.body);
+            const result = await userService.UserCreate(req.body);
             res.status(201).json(result);
         } catch (error) {
             const statusCode = error.statusCode || 500;

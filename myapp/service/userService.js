@@ -2,35 +2,71 @@ import UserRepository from '../repositories/userRepository.js';
 const userRepository = new UserRepository();
 import bcrypt from 'bcryptjs';
 class UserService {
-    async signup(data) {
-        const { email, password } = data;
+    async UserCreate(data) {
+        try {
+            const { email, password, name, organization_name, create = false, is_active } = data;
+            console.log('Signup data received:', data);
 
-        console.log(email, password);
+            // Validate input
+            if (!password || !email || !name || !organization_name) {
+                const error = new Error('All fields are required');
+                error.statusCode = 400;
+                throw error;
+            }
 
-        // Validate input
-        if (!password || !email) {
-            const error = new Error('password and email are required');
-            error.statusCode = 400;
+            // Check if user already exists
+            const existingUser = await userRepository.findByEmail(email);
+            console.log('Existing user check:', existingUser);
+            if (existingUser) {
+                const error = new Error('User with this email already exists');
+                error.statusCode = 400;
+                throw error;
+            }
+
+            const hashedPassword = await bcrypt.hash(password, 10);
+            console.log('Hashed password:', hashedPassword);
+
+            let user;
+
+            if (create) {
+                console.log('Creating new organization...');
+                const org = await userRepository.OrgCreate({ name, organization_name });
+                console.log('New organization created:', org);
+
+                user = await userRepository.create({
+                    email,
+                    password: hashedPassword,
+                    name,
+                    organization_id: org.id,
+                    is_active: true
+                });
+            } else {
+                console.log('Joining existing organization...');
+                const org = await userRepository.findByColumnsAndGetId(organization_name, 'organization_name', 'organizations');
+                if (!org) {
+                    throw new Error('Organization does not exist');
+                }
+                console.log('Organization found:', org);
+
+                user = await userRepository.create({
+                    email,
+                    password: hashedPassword,
+                    name,
+                    organization_id: org.id,
+                    is_active: false
+                });
+            }
+
+            console.log('User created successfully:', user);
+
+            return {
+                message: 'User created successfully',
+                user
+            };
+        } catch (error) {
+            console.error('Error in UserCreate:', error);
             throw error;
         }
-
-        // Check if user already exists
-        const existingUser = await userRepository.findByEmail(email);
-        if (existingUser) {
-            const error = new Error('User with this email already exists');
-            error.statusCode = 400;
-            throw error;
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Create user
-        const user = await userRepository.create({ email, password: hashedPassword });
-
-        return {
-            message: 'User created successfully',
-            user: user
-        };
     }
 
 
