@@ -21,6 +21,8 @@ class UserRepository extends baseRepository {
             values
         );
 
+
+
         // Return a friendly object including the new ID
         return {
             id: result.insertId,
