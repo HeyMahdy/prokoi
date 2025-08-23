@@ -5,6 +5,7 @@ class BaseRepository {
         this.db = db;
     }
 
+    // Basic CRUD operations
     async findAll() {
         const [rows] = await this.db.promise().query(`SELECT * FROM ${this.table}`);
         return rows;
@@ -30,7 +31,6 @@ class BaseRepository {
             console.error('Repository: Find by email error:', error);
             throw error;
         }
-
     }
 
     async findByColumnsAndGetId(col_data, col_name, table_name) {
@@ -59,6 +59,42 @@ class BaseRepository {
         );
 
         return { id: result.insertId, ...data };
+    }
+
+    // Update operations
+    async updateById(id, data) {
+        const keys = Object.keys(data);
+        const values = Object.values(data);
+        const setClause = keys.map(key => `${key} = ?`).join(', ');
+
+        const [result] = await this.db.promise().query(
+            `UPDATE ${this.table} SET ${setClause} WHERE id = ?`,
+            [...values, id]
+        );
+
+        return result.affectedRows > 0;
+    }
+
+    async updateByColumn(columnName, columnValue, data) {
+        const keys = Object.keys(data);
+        const values = Object.values(data);
+        const setClause = keys.map(key => `${key} = ?`).join(', ');
+
+        const [result] = await this.db.promise().query(
+            `UPDATE ${this.table} SET ${setClause} WHERE ${columnName} = ?`,
+            [...values, columnValue]
+        );
+
+        return result.affectedRows > 0;
+    }
+
+    // Delete operations
+    async deleteById(id) {
+        const [result] = await this.db.promise().query(
+            `DELETE FROM ${this.table} WHERE id = ?`,
+            [id]
+        );
+        return result.affectedRows > 0;
     }
 
 
