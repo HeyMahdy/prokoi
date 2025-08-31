@@ -184,3 +184,7 @@ $RECYCLE.BIN/
 config/database.json
 config/secrets.json
 *.env.production
+
+Commands.md
+todo.md
+doc.md

@@ -4,11 +4,11 @@ import bcrypt from 'bcryptjs';
 class UserService {
     async UserCreate(data) {
         try {
-            const { email, password, name, organization_name, create = false, is_active } = data;
+            const { email, password, name } = data;
             console.log('Signup data received:', data);
 
             // Validate input
-            if (!password || !email || !name || !organization_name) {
+            if (!password || !email || !name) {
                 const error = new Error('All fields are required');
                 error.statusCode = 400;
                 throw error;
@@ -26,36 +26,12 @@ class UserService {
             const hashedPassword = await bcrypt.hash(password, 10);
             console.log('Hashed password:', hashedPassword);
 
-            let user;
 
-            if (create) {
-                console.log('Creating new organization...');
-                const org = await userRepository.OrgCreate({ name, organization_name });
-                console.log('New organization created:', org);
-
-                user = await userRepository.create({
-                    email,
-                    password: hashedPassword,
-                    name,
-                    organization_id: org.id,
-                    is_active: true
-                });
-            } else {
-                console.log('Joining existing organization...');
-                const org = await userRepository.findByColumnsAndGetId(organization_name, 'organization_name', 'organizations');
-                if (!org) {
-                    throw new Error('Organization does not exist');
-                }
-                console.log('Organization found:', org);
-
-                user = await userRepository.create({
-                    email,
-                    password: hashedPassword,
-                    name,
-                    organization_id: org.id,
-                    is_active: false
-                });
-            }
+            const user = await userRepository.userCreate({
+                email,
+                password_hash: hashedPassword,
+                name
+            });
 
             console.log('User created successfully:', user);
 

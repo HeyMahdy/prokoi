@@ -1,56 +1,40 @@
 
 import db from '../db/connection.js';
 import baseRepository from './BaseRepository.js';
-
+import OrgRepository from './OrgRepository.js'
+import OrganizationUsers from './organization_users.js'
 
 class UserRepository extends baseRepository {
 
     constructor() {
-        super('user', db);
+        super('users', db);
+        this.orgRepo = new OrgRepository();
+        this.orgUser = new OrganizationUsers();
     }
 
-    async OrgCreate(data) {
-        const { name, organization_name } = data;  // 'name' is the org owner
+    async userCreate(data) {
+        const connection = await db.getConnection();
+        try {
+            await connection.beginTransaction();
 
-        // Values array in the same order as placeholders
-        const values = [organization_name, name];
+            const { email, password_hash, name } = data;
 
-        // Use placeholders `?` to safely insert data
-        const [result] = await this.db.promise().query(
-            `INSERT INTO organizations (organization_name, organization_owner) VALUES (?, ?)`,
-            values
-        );
+            const user = await this.create({ email, password_hash, name }, connection);
 
+            const org = await this.orgRepo.create({ name: "default" }, connection);
 
+            const org_user = await this.orgUser.create({ organization_id: org.id, user_id: user.id }, connection);
 
-        // Return a friendly object including the new ID
-        return {
-            id: result.insertId,
-            organization_name: organization_name,
-            organization_owner: name
-        };
+            await connection.commit();
 
-    }
-
-
-
-    async UserCreate(data) {
-        const { email, password, name, organization_name } = data;
-
-        // ✅ Call findByColumns from the parent class
-        const orgId = await this.findByColumnsAndGetId(organization_name, 'organization_name', 'organizations');
-        if (!orgId) {
-            throw new Error('org dos not  exists');
+            return { user, org, org_user };
+        } catch (err) {
+            await connection.rollback();
+            throw err;
+        } finally {
+            connection.release();
         }
-
-        const user = await this.create({ email, password, name, organization_id: orgId });
-
-        return user;
-
     }
-
-
-
 
 
 }

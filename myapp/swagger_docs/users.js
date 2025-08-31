@@ -8,7 +8,6 @@
  *         - email
  *         - password
  *         - name
- *         - organization_name
  *       properties:
  *         email:
  *           type: string
@@ -20,17 +19,6 @@
  *         name:
  *           type: string
  *           example: "John Doe"
- *         organization_name:
- *           type: string
- *           example: "TechCorp"
- *         create:
- *           type: boolean
- *           description: "Whether the user wants to create a new organization"
- *           example: true
- *         is_active:
- *           type: boolean
- *           description: "Whether the user should be active immediately"
- *           example: true
  *     LoginRequest:
  *       type: object
  *       required:

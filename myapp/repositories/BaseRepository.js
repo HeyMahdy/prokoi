@@ -5,25 +5,41 @@ class BaseRepository {
         this.db = db;
     }
 
-    // Basic CRUD operations
-    async findAll() {
-        const [rows] = await this.db.promise().query(`SELECT * FROM ${this.table}`);
-        return rows;
+    // -----------------------------
+    // Internal query helper
+    // -----------------------------
+    async query(sql, params = [], connection = null) {
+        if (connection) {
+            const [rows] = await connection.query(sql, params);
+            return rows;
+        } else {
+            const [rows] = await this.db.query(sql, params);
+            return rows;
+        }
     }
 
-    async findById(id) {
-        const [rows] = await this.db.promise().query(
+    // -----------------------------
+    // CRUD operations
+    // -----------------------------
+    async findAll(connection = null) {
+        return this.query(`SELECT * FROM ${this.table}`, [], connection);
+    }
+
+    async findById(id, connection = null) {
+        const rows = await this.query(
             `SELECT * FROM ${this.table} WHERE id = ?`,
-            [id]
+            [id],
+            connection
         );
         return rows[0] || null;
     }
 
-    async findByEmail(email) {
+    async findByEmail(email, connection = null) {
         try {
-            const [rows] = await this.db.promise().query(
+            const rows = await this.query(
                 `SELECT * FROM ${this.table} WHERE email = ?`,
-                [email]
+                [email],
+                connection
             );
             return rows[0] || null;
         }
@@ -33,14 +49,15 @@ class BaseRepository {
         }
     }
 
-    async findByColumnsAndGetId(col_data, col_name, table_name) {
+    async findByColumnsAndGetId(col_data, col_name, table_name, connection = null) {
         try {
-            const [rows] = await this.db.promise().query(
+            const rows = await this.query(
                 `SELECT * FROM ${table_name} WHERE ${col_name} = ?`,
-                [col_data]
+                [col_data],
+                connection
             );
-            if (rows.length === 0) return null;  // no row found
-            return { id: rows[0].id };           // return id of first matching row
+            if (rows.length === 0) return null;
+            return { id: rows[0].id };
         }
         catch (error) {
             console.error('Repository: Find by column error:', error);
@@ -48,56 +65,56 @@ class BaseRepository {
         }
     }
 
-    async create(data) {
+    async create(data, connection = null) {
         const keys = Object.keys(data).join(',');
         const values = Object.values(data);
         const placeholders = values.map(() => '?').join(',');
 
-        const [result] = await this.db.promise().query(
+        const result = await this.query(
             `INSERT INTO ${this.table} (${keys}) VALUES (${placeholders})`,
-            values
+            values,
+            connection
         );
 
         return { id: result.insertId, ...data };
     }
 
-    // Update operations
-    async updateById(id, data) {
+    async updateById(id, data, connection = null) {
         const keys = Object.keys(data);
         const values = Object.values(data);
         const setClause = keys.map(key => `${key} = ?`).join(', ');
 
-        const [result] = await this.db.promise().query(
+        const result = await this.query(
             `UPDATE ${this.table} SET ${setClause} WHERE id = ?`,
-            [...values, id]
+            [...values, id],
+            connection
         );
 
         return result.affectedRows > 0;
     }
 
-    async updateByColumn(columnName, columnValue, data) {
+    async updateByColumn(columnName, columnValue, data, connection = null) {
         const keys = Object.keys(data);
         const values = Object.values(data);
         const setClause = keys.map(key => `${key} = ?`).join(', ');
 
-        const [result] = await this.db.promise().query(
+        const result = await this.query(
             `UPDATE ${this.table} SET ${setClause} WHERE ${columnName} = ?`,
-            [...values, columnValue]
+            [...values, columnValue],
+            connection
         );
 
         return result.affectedRows > 0;
     }
 
-    // Delete operations
-    async deleteById(id) {
-        const [result] = await this.db.promise().query(
+    async deleteById(id, connection = null) {
+        const result = await this.query(
             `DELETE FROM ${this.table} WHERE id = ?`,
-            [id]
+            [id],
+            connection
         );
         return result.affectedRows > 0;
     }
-
-
 }
 
 export default BaseRepository;
