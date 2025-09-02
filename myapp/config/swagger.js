@@ -13,7 +13,8 @@ const options = {
         },
         servers: [
             {
-                url: 'http://ec2-13-126-1-128.ap-south-1.compute.amazonaws.com:8000'
+                //url: 'http://ec2-13-126-1-128.ap-south-1.compute.amazonaws.com:8000'
+                url: 'http://localhost:8000'
             },
         ],
         components: {

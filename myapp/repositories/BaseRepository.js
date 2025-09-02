@@ -36,6 +36,7 @@ class BaseRepository {
 
     async findByEmail(email, connection = null) {
         try {
+            console.log(this.db)
             const rows = await this.query(
                 `SELECT * FROM ${this.table} WHERE email = ?`,
                 [email],
@@ -45,11 +46,12 @@ class BaseRepository {
         }
         catch (error) {
             console.error('Repository: Find by email error:', error);
+
             throw error;
         }
     }
 
-    async findByColumnsAndGetId(col_data, col_name, table_name, connection = null) {
+    async findByColumnsAndGetId({ col_data, col_name, table_name }, connection = null) {
         try {
             const rows = await this.query(
                 `SELECT * FROM ${table_name} WHERE ${col_name} = ?`,

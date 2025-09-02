@@ -1,7 +1,8 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 // Create a pool (recommended for production + transactions)
-dotenv.config();
+dotenv.config({ path: "./myapp/.env" });
+console.log(process.env.DB_HOST)
 const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
