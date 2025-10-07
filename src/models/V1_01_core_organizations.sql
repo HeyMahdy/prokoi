@@ -30,11 +30,21 @@ CREATE TABLE organization_users (
 
 CREATE TABLE organization_invitations (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    invited_by INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    organization_id INT NOT NULL,
+    user_id INT NOT NULL,
+    invited_by INT NOT NULL,
     status VARCHAR(20) DEFAULT 'pending',
-    INDEX idx_userId (user_id),
-    INDEX idx_invited_by (invited_by),
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    -- Foreign keys
+    CONSTRAINT fk_org FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_invited_by FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE CASCADE,
+
+    -- Unique constraint to prevent duplicate invitations
+    CONSTRAINT uq_org_user_inviter UNIQUE (organization_id, user_id, invited_by),
+
+    -- Optional: index to speed up queries by user and inviter
+    INDEX idx_user_invited_by (user_id, invited_by)
 );
