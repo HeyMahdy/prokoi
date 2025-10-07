@@ -43,18 +43,23 @@ class RolesRepository:
 
     async def list_all_permissions(self) :
         query = """
-        SELECT p.id, p.name, p.code
+        SELECT p.id, p.name
         FROM permissions p
         ORDER BY p.name ASC
         """
         return await db.execute_query(query, [])
 
-    async def assign_permission_to_role(self, role_id: int, permission_id: int) -> int:
+    async def assign_permission_to_role(self, role_id: int, permission_name: str):
         query = """
-        INSERT INTO role_permissions (role_id, permission_id)
-        VALUES (%s, %s)
-        """
-        return await db.execute_insert(query, [role_id, permission_id])
+                INSERT INTO role_permissions (role_id, permission_id)
+                SELECT %s, id FROM permissions WHERE name = %s;
+                """
+        try:
+            # 👇 correct parameter order!
+            return await db.execute_insert(query, [role_id, permission_name])
+        except Exception as e:
+            raise ValueError(f"Failed to add permission: {e}")
+
 
     async def remove_permission_from_role(self, role_id: int, permission_id: int) -> None:
         query = """
@@ -93,6 +98,20 @@ class RolesRepository:
         """
         rows = await db.execute_query(query, [user_id, organization_id])
         return bool(rows)
+
+    async def get_role_permissions(self, organization_id: int):
+      try:
+        query = """
+        select r.name , p.name
+        from roles r
+        join role_permissions rp on r.id = rp.role_id
+        join permissions p on p.id = rp.permission_id
+        where r.organization_id = %s 
+        """
+        results = await db.execute_query(query, [organization_id,])
+        return results
+      except Exception as e:
+          raise ValueError("error has come",e)
 
 
 

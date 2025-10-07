@@ -4,7 +4,7 @@ from src.api.users import router as users_router
 from src.api.organizations import router as organizations_router
 from src.core.database import db
 from contextlib import asynccontextmanager
-
+from src.api.roles import router as roles_router
 from src.middleware.auth import AuthMiddleware
 
 
@@ -44,6 +44,7 @@ app.add_middleware(
 
 app.include_router(users_router)
 app.include_router(organizations_router)
+app.include_router(roles_router)
 
 
 @app.get("/")
