@@ -59,7 +59,6 @@ CREATE TABLE project_users (
     user_id INT NULL,
     INDEX idx_project_users_project_id (project_id),
     INDEX idx_project_users_user_id (user_id),
-    role ENUM('owner', 'admin', 'member', 'guest') DEFAULT 'member',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,

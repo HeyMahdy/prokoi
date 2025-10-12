@@ -9,6 +9,10 @@ from contextlib import asynccontextmanager
 from src.api.roles import router as roles_router
 from src.middleware.auth import AuthMiddleware
 from src.middleware.roleMiddleware import RoleMiddleware
+from src.api.workspaces import router as workspaces_router
+from src.api.projects import router as projects_router
+
+# Add to your existing routers
 
 
 @asynccontextmanager
@@ -53,6 +57,10 @@ app.include_router(teams_router)
 app.include_router(team_members_router)
 app.include_router(roles_router)
 
+# Add to your existing routers
+app.include_router(workspaces_router)
+
+app.include_router(projects_router)
 
 @app.get("/")
 async def root():
