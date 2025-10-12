@@ -87,17 +87,27 @@ class RolesRepository:
         rows = await db.execute_query(query, [role_id])
         return rows[0] if rows else None
 
-    async def is_permission(self, user_id: int, organization_id: int) -> bool:
-        # Adjust table/column names to your schema
+    async def is_permission(self, user_id: int, permission_list: list[str]) -> bool:
+        """Check if user has any of the specified permissions"""
+        if not permission_list:
+            return False
+
+        # Create placeholders for the permission names
+        placeholders = ','.join(['%s'] * len(permission_list))
+
         query = """
         SELECT 1
-        FROM user_role ur
-        JOIN roles r ON r.id = ur.role_id
-        WHERE ur.user_id = %s AND r.organization_id = %s AND r.name = 'admin'
+        FROM user_role ur 
+        JOIN role_permissions rp ON ur.role_id = rp.role_id
+        JOIN permissions p ON rp.permission_id = p.id
+        WHERE ur.user_id = %s 
+        AND p.name IN ({})
         LIMIT 1
-        """
-        rows = await db.execute_query(query, [user_id, organization_id])
-        return bool(rows)
+        """.format(placeholders)
+
+        params = [user_id] + permission_list
+        rows = await db.execute_query(query, params)
+        return len(rows) > 0
 
     async def get_role_permissions(self, organization_id: int):
       try:

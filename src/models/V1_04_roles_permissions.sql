@@ -12,7 +12,7 @@ CREATE TABLE permissions (
     INDEX idx_permissions_name (name)
 );
 -- Role permissions table
-CREATE TABLE role_permissions (
+ CREATE TABLE role_permissions(
     id INT AUTO_INCREMENT PRIMARY KEY,
     role_id INT NOT NULL,
     permission_id INT NOT NULL,
@@ -60,3 +60,4 @@ VALUES ('all'),
     ('create_workspace'),
     ('delete_workspace');
 INSERT INTO roles (name)
+

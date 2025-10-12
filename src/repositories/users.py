@@ -21,7 +21,7 @@ class UserRepository:
                 WHERE email = %s
                 """
 
-        params = [email]
+        params = [email,]
         result = await db.execute_query(query, params)
         # Return a single user row or None for consistency with find_user_by_id
         return result[0] if result else None

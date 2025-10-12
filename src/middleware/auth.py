@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from jose import JWTError, jwt
 from src.core.config import settings
 from src.repositories.users import UserRepository
-
+import pprint
 class AuthMiddleware:
     def __init__(self, app, allow_paths: list[str] | None = None):
         self.app = app
@@ -43,5 +43,7 @@ class AuthMiddleware:
         # Attach user to request.state for downstream handlers
         scope.setdefault("state", {})
         request.state.user = user
+        print("this is scope info")
+        pprint.pprint(scope)
 
         return await self.app(scope, receive, send)
