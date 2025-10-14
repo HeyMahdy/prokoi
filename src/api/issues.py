@@ -35,7 +35,7 @@ async def get_project_issues(
     request: Request,
     Status: Optional[str] = Query(None, description="Filter by status"),
     priority: Optional[str] = Query(None, description="Filter by priority"),
-    issues_type_id: Optional[int] = Query(None, description="Filter by issue type ID")
+    type_id: Optional[int] = Query(None, description="Filter by issue type ID")
 ):
     """Get all issues for a specific project with optional filters"""
     user = getattr(request.state, "user", None)
@@ -43,10 +43,10 @@ async def get_project_issues(
         raise HTTPException(status_code=404, detail="Not authenticated")
 
     try:
-        if status or priority or issues_type_id:
+        if Status or priority or type_id:
             # Use filtered search
             issues = await issues_service.get_issues_with_filters(
-                project_id, Status, priority, issues_type_id
+                project_id, Status, priority, type_id
             )
         else:
             # Get all issues

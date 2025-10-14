@@ -43,7 +43,6 @@ class AuthMiddleware:
         # Attach user to request.state for downstream handlers
         scope.setdefault("state", {})
         request.state.user = user
-        print("this is scope info")
-        pprint.pprint(scope)
+
 
         return await self.app(scope, receive, send)

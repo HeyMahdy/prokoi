@@ -16,7 +16,7 @@ class IssuesService:
                 project_id=issue_data.project_id,
                 title=issue_data.title,
                 created_by=created_by,
-                issues_type_id=issue_data.issues_type_id,
+                type_id=issue_data.type_id,
                 description=issue_data.description,
                 story_points=issue_data.story_points,
                 status=issue_data.status,
@@ -136,7 +136,7 @@ class IssuesService:
 
     async def get_issues_with_filters(self, project_id: int, status: Optional[str] = None, 
                                     priority: Optional[str] = None, 
-                                    issues_type_id: Optional[int] = None) -> List[IssueResponse]:
+                                    type_id: Optional[int] = None) -> List[IssueResponse]:
         """Get issues with optional filters"""
         try:
             # Get all issues for the project first
@@ -151,8 +151,8 @@ class IssuesService:
             if priority:
                 filtered_issues = [issue for issue in filtered_issues if issue['priority'] == priority]
             
-            if issues_type_id:
-                filtered_issues = [issue for issue in filtered_issues if issue['issues_type_id'] == issues_type_id]
+            if type_id:
+                filtered_issues = [issue for issue in filtered_issues if issue['type_id'] == type_id]
             
             return [IssueResponse(**issue) for issue in filtered_issues]
             

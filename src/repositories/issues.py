@@ -59,22 +59,25 @@ class IssueRepository:
 
     # Issues CRUD operations
     async def create_issue(self, project_id: int, title: str, created_by: int, 
-                          issues_type_id: int = None, description: str = None, 
+                          type_id: int = None, description: str = None, 
                           story_points: int = None, status: str = "open", 
                           priority: str = "medium", parent_issue_id: int = None):
         """Create a new issue"""
         query = """
-        INSERT INTO issues (project_id, issues_type_id, title, description, story_points, 
+        INSERT INTO issues (project_id, type_id, title, description, story_points, 
                           status, priority, created_by, parent_issue_id) 
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
-        return await db.execute_insert(query, [project_id, issues_type_id, title, description, 
+        try:
+         return await db.execute_insert(query, [project_id, type_id, title, description,
                                               story_points, status, priority, created_by, parent_issue_id])
+        except Exception as e:
+            print("error in the query",e)
 
     async def get_issues_by_project(self, project_id: int):
         """Get all issues for a specific project"""
         query = """
-        SELECT i.id, i.project_id, i.issues_type_id, i.title, i.description, 
+        SELECT i.id, i.project_id, i.type_id, i.title, i.description, 
                i.story_points, i.status, i.priority, i.created_by, i.parent_issue_id,
                i.created_at, i.updated_at
         FROM issues i
@@ -86,7 +89,7 @@ class IssueRepository:
     async def get_issue_by_id(self, issue_id: int):
         """Get a specific issue by ID"""
         query = """
-        SELECT i.id, i.project_id, i.issues_type_id, i.title, i.description, 
+        SELECT i.id, i.project_id, i.type_id, i.title, i.description, 
                i.story_points, i.status, i.priority, i.created_by, i.parent_issue_id,
                i.created_at, i.updated_at
         FROM issues i
@@ -128,7 +131,7 @@ class IssueRepository:
     async def get_issues_by_status(self, project_id: int, status: str):
         """Get all issues with a specific status for a project"""
         query = """
-        SELECT i.id, i.project_id, i.issues_type_id, i.title, i.description, 
+        SELECT i.id, i.project_id, i.type_id, i.title, i.description, 
                i.story_points, i.status, i.priority, i.created_by, i.parent_issue_id,
                i.created_at, i.updated_at
         FROM issues i
@@ -140,7 +143,7 @@ class IssueRepository:
     async def get_issues_by_priority(self, project_id: int, priority: str):
         """Get all issues with a specific priority for a project"""
         query = """
-        SELECT i.id, i.project_id, i.issues_type_id, i.title, i.description, 
+        SELECT i.id, i.project_id, i.type_id, i.title, i.description, 
                i.story_points, i.status, i.priority, i.created_by, i.parent_issue_id,
                i.created_at, i.updated_at
         FROM issues i
@@ -152,7 +155,7 @@ class IssueRepository:
     async def get_sub_issues(self, parent_issue_id: int):
         """Get all sub-issues (children) of a parent issue"""
         query = """
-        SELECT i.id, i.project_id, i.issues_type_id, i.title, i.description, 
+        SELECT i.id, i.project_id, i.type_id, i.title, i.description, 
                i.story_points, i.status, i.priority, i.created_by, i.parent_issue_id,
                i.created_at, i.updated_at
         FROM issues i
