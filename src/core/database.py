@@ -35,7 +35,6 @@ class Database:
             await cursor.execute(query,params)
             await conn.commit()
             result = await cursor.fetchall()
-            print(result)
             return result
       finally:
           await self.release_connection(conn)

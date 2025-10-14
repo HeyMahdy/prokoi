@@ -12,6 +12,8 @@ from src.middleware.roleMiddleware import RoleMiddleware
 from src.api.workspaces import router as workspaces_router
 from src.api.projects import router as projects_router
 from src.api.organization_requests import router as organization_requests_router
+from src.api.issue_types import router as issue_types_router
+from src.api.issues import router as issues_router
 
 # Add to your existing routers
 
@@ -65,6 +67,8 @@ app.include_router(projects_router)
 
 # Add to your existing routers
 app.include_router(organization_requests_router)
+app.include_router(issue_types_router)
+app.include_router(issues_router)
 @app.get("/")
 async def root():
     return {"message": "Prokoi API is running"}

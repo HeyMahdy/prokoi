@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException, Request, status, Depends
 from src.services.projects import ProjectsService
 from fastapi.security import HTTPBearer
-
+from src.services.view import View
 bearer = HTTPBearer()
 router = APIRouter(prefix="/api", tags=["Projects"], dependencies=[Depends(bearer)])
 
 projectsService = ProjectsService()
+view = View()
 
 @router.post("/workspaces/{workspace_id}/projects", status_code=status.HTTP_201_CREATED)
 async def create_project(workspace_id: int, name: str, request: Request ,decision: str = 'active'):
@@ -33,8 +34,12 @@ async def list_workspace_projects(workspace_id: int, request: Request):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     try:
+        result = []
         projects = await projectsService.get_workspace_projects(workspace_id, user["id"])
-        return projects
+        for project in projects:
+            if(await view.can_view_workspace_projects(project["id"], user["id"])):
+                result.append(project)
+        return result
     except Exception as e:
         if "Access denied" in str(e):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
