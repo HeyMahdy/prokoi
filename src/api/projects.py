@@ -41,7 +41,7 @@ async def list_workspace_projects(workspace_id: int, request: Request):
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get workspace projects")
 
-@router.put("/projects/{project_id}/status")
+@router.put("/projects/{project_id}/decision")
 async def update_project_status(project_id: int, decision: str, request: Request):
     """Update project status"""
     user = getattr(request.state, "user", None)

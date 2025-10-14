@@ -60,7 +60,7 @@ class ProjectsService:
             raise Exception("Access denied to project")
 
         # Validate status
-        valid_statuses = ['active', 'archived', 'on_hold']
+        valid_statuses = ['active', 'Inactive', 'On hold','Completed']
         if status not in valid_statuses:
             raise ValueError(f"Status must be one of: {valid_statuses}")
 

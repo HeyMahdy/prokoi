@@ -18,7 +18,7 @@ CREATE TABLE projects (
     name VARCHAR(255) NOT NULL,
     workspace_id INT NOT NULL,
     created_by INT NULL,
-    status ENUM('active', 'archived', 'on_hold') DEFAULT 'active',
+    status ENUM('pending', 'active', 'inactive', 'completed') , DEFAULT 'pending';
     INDEX idx_projects_workspace_id (workspace_id),
     INDEX idx_projects_id (id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
