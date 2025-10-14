@@ -33,20 +33,20 @@ async def create_issue(project_id: int, issue_data: IssueCreate, request: Reques
 async def get_project_issues(
     project_id: int, 
     request: Request,
-    status: Optional[str] = Query(None, description="Filter by status"),
+    Status: Optional[str] = Query(None, description="Filter by status"),
     priority: Optional[str] = Query(None, description="Filter by priority"),
     issues_type_id: Optional[int] = Query(None, description="Filter by issue type ID")
 ):
     """Get all issues for a specific project with optional filters"""
     user = getattr(request.state, "user", None)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        raise HTTPException(status_code=404, detail="Not authenticated")
 
     try:
         if status or priority or issues_type_id:
             # Use filtered search
             issues = await issues_service.get_issues_with_filters(
-                project_id, status, priority, issues_type_id
+                project_id, Status, priority, issues_type_id
             )
         else:
             # Get all issues
@@ -54,7 +54,7 @@ async def get_project_issues(
         
         return issues
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch issues")
+        raise HTTPException(status_code=404, detail="Failed to fetch issues")
 
 
 @router.get("/issues/{issue_id}", response_model=IssueResponse, status_code=status.HTTP_200_OK)
@@ -62,7 +62,7 @@ async def get_issue(issue_id: int, request: Request):
     """Get a specific issue by ID"""
     user = getattr(request.state, "user", None)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not authenticated")
 
     try:
         issue = await issues_service.get_issue_by_id(issue_id)
@@ -111,14 +111,14 @@ async def delete_issue(issue_id: int, request: Request):
 
 
 @router.get("/projects/{project_id}/issues/status/{status}", response_model=List[IssueResponse], status_code=status.HTTP_200_OK)
-async def get_issues_by_status(project_id: int, status: str, request: Request):
+async def get_issues_by_status(project_id: int, Status: str, request: Request):
     """Get all issues with a specific status for a project"""
     user = getattr(request.state, "user", None)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     try:
-        issues = await issues_service.get_issues_by_status(project_id, status)
+        issues = await issues_service.get_issues_by_status(project_id, Status)
         return issues
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch issues by status")
@@ -156,14 +156,14 @@ async def get_sub_issues(parent_issue_id: int, request: Request):
 
 # Additional utility endpoints
 @router.patch("/issues/{issue_id}/status", response_model=IssueResponse, status_code=status.HTTP_200_OK)
-async def update_issue_status(issue_id: int, status: str, request: Request):
+async def update_issue_status(issue_id: int, Status: str, request: Request):
     """Update only the status of an issue"""
     user = getattr(request.state, "user", None)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     try:
-        issue_data = IssueUpdate(status=status)
+        issue_data = IssueUpdate(status=Status)
         issue = await issues_service.update_issue(issue_id, issue_data)
         return issue
     except ValueError as ve:

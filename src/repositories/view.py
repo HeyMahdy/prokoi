@@ -26,29 +26,34 @@ class ViewRepository:
           f2 = await db.execute_query(query_02, params_02)
           return bool(f1 or f2)
         except Exception as e:
-            print("error in the query")
+            print("error in the query",e)
 
 
-    async def can_view_workspace_projects(self,project_id: int,user_id: int) -> bool:
-        query_01 = """ \
-                   select 1 \
-                   from project_teams pt \
-                            join user_team ut on pt.team_id = ut.team_id \
-                   where tw.project_id = %s \
-                     and ut.user_id = %s \
+    async def can_view_workspace_projects(self,project_id: int,user_id: int):
+        query_01 = """ 
+                   select 1 
+                   from project_teams pt 
+                   join user_team ut on pt.team_id = ut.team_id 
+                   where pt.project_id = %s 
+                     and ut.user_id = %s 
                  """
-        query_02 = """ \
-                   SELECT r.name \
-                   FROM roles r \
-                            JOIN user_role ur ON r.id = ur.role_id \
-                   WHERE ur.user_id = %s \
-                     AND r.name IN ('admin', 'super_admin', 'supervisor') \
+        query_02 = """ 
+                   SELECT 1 
+                   FROM roles r 
+                   JOIN user_role ur ON r.id = ur.role_id 
+                   WHERE ur.user_id = %s 
+                     AND r.name IN ('admin', 'super_admin', 'supervisor') 
                  """
-        params_01 = [project_id, ]
+        params_01 = [project_id, user_id]
         params_02 = [user_id, ]
-
-        return bool(await db.execute_query(query_02, params_01)
-                    or await db.execute_query(query_01, params_02))
+        try:
+            f1 = await db.execute_query(query_01, params_01)
+            f2 = await db.execute_query(query_02, params_02)
+            print(f1)
+            print(f2)
+            return bool(f1 or f2)
+        except Exception as e:
+            print("error in the query",e)
 
 
 
