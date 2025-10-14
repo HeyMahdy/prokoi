@@ -1,6 +1,14 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
+    # Local DB (old)
+    # DB_HOST: str = "localhost"
+    # DB_PORT: int = 3306
+    # DB_USER: str = "root"
+    # DB_PASSWORD: str = ""
+    # DB_NAME: str = "prokoi"
+
+    # Production DB (Neon)
     DB_HOST: str
     DB_PORT: int
     DB_USER: str

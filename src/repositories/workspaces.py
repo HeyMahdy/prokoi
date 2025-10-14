@@ -2,7 +2,7 @@ from src.core.database import db
 import aiomysql
 
 class WorkspacesRepository:
-    async def create_workspace(self, organization_id: int, name: str, user_id: int, team_id: int = None) -> int:
+    async def create_workspace(self, organization_id: int, name: str, user_id: int) -> int:
         """Create a new workspace in an organization"""
         conn = await db.get_connection()
         try:
@@ -11,8 +11,8 @@ class WorkspacesRepository:
 
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute(
-                    "INSERT INTO workspaces (name, user_id, team_id, organization_id) VALUES (%s, %s, %s, %s)",
-                    (name, user_id, team_id, organization_id)
+                    "INSERT INTO workspaces (name, user_id, organization_id) VALUES (%s, %s, %s)",
+                    (name, user_id, organization_id)
                 )
                 workspace_id = cur.lastrowid
 
@@ -28,12 +28,8 @@ class WorkspacesRepository:
     async def get_organization_workspaces(self, organization_id: int) -> list[dict]:
         """Get all workspaces for an organization"""
         query = """
-        SELECT w.id, w.name, w.user_id, w.team_id, w.organization_id, w.created_at, w.updated_at,
-               u.name as creator_name, u.email as creator_email,
-               t.name as team_name
+        SELECT w.id, w.name, w.user_id, w.organization_id, w.created_at, w.updated_at
         FROM workspaces w
-        JOIN users u ON w.user_id = u.id
-        LEFT JOIN teams t ON w.team_id = t.id
         WHERE w.organization_id = %s
         ORDER BY w.created_at DESC
         """
@@ -42,12 +38,10 @@ class WorkspacesRepository:
     async def get_workspace_by_id(self, workspace_id: int) -> dict | None:
         """Get workspace by ID"""
         query = """
-        SELECT w.id, w.name, w.user_id, w.team_id, w.organization_id, w.created_at, w.updated_at,
-               u.name as creator_name, u.email as creator_email,
-               t.name as team_name
+        SELECT w.id, w.name, w.user_id, w.organization_id, w.created_at, w.updated_at,
+               u.name as creator_name, u.email as creator_email
         FROM workspaces w
         JOIN users u ON w.user_id = u.id
-        LEFT JOIN teams t ON w.team_id = t.id
         WHERE w.id = %s
         LIMIT 1
         """

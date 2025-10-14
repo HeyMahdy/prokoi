@@ -10,11 +10,11 @@ class Database:
 
     async def create_pool(self):
       self.pool = await aiomysql.create_pool(
-        host=settings.DB_HOST,
-        user=settings.DB_USER,
-        password=settings.DB_PASSWORD,
-        port =  settings.DB_PORT,
-        db   = settings.DB_NAME,
+       host=settings.DB_HOST,
+       user=settings.DB_USER,
+       password=settings.DB_PASSWORD,
+       port =  settings.DB_PORT,
+        db  = settings.DB_NAME,
           cursorclass=DictCursor,
           autocommit=True,
           minsize=1,

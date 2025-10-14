@@ -48,3 +48,23 @@ CREATE TABLE organization_invitations (
     -- Optional: index to speed up queries by user and inviter
     INDEX idx_user_invited_by (user_id, invited_by)
 );
+CREATE TABLE organization_outgoing_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    organization_id INT NOT NULL,
+    sender_id INT NOT NULL,          -- The user sending the invitation
+    receiver_id INT NOT NULL,        -- The user receiving the invitation
+    status VARCHAR(20) DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    -- Foreign keys
+    CONSTRAINT fk_org_outgoing FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    CONSTRAINT fk_sender FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_receiver FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE,
+
+    -- Unique constraint to prevent duplicate outgoing requests
+    CONSTRAINT uq_org_sender_receiver UNIQUE (organization_id, sender_id, receiver_id),
+
+    -- Optional: index for faster lookup
+    INDEX idx_sender_receiver (sender_id, receiver_id)
+);

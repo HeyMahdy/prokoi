@@ -11,6 +11,7 @@ from src.middleware.auth import AuthMiddleware
 from src.middleware.roleMiddleware import RoleMiddleware
 from src.api.workspaces import router as workspaces_router
 from src.api.projects import router as projects_router
+from src.api.organization_requests import router as organization_requests_router
 
 # Add to your existing routers
 
@@ -44,7 +45,7 @@ app.add_middleware(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,6 +63,8 @@ app.include_router(workspaces_router)
 
 app.include_router(projects_router)
 
+# Add to your existing routers
+app.include_router(organization_requests_router)
 @app.get("/")
 async def root():
     return {"message": "Prokoi API is running"}

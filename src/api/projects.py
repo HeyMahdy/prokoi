@@ -8,14 +8,14 @@ router = APIRouter(prefix="/api", tags=["Projects"], dependencies=[Depends(beare
 projectsService = ProjectsService()
 
 @router.post("/workspaces/{workspace_id}/projects", status_code=status.HTTP_201_CREATED)
-async def create_project(workspace_id: int, name: str, status: str = 'active', request: Request = None):
+async def create_project(workspace_id: int, name: str, request: Request ,decision: str = 'active'):
     """Create project in workspace"""
     user = getattr(request.state, "user", None)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     try:
-        project = await projectsService.create_project(workspace_id, name, user["id"], status)
+        project = await projectsService.create_project(workspace_id, name, user["id"], decision)
         return project
     except ValueError as ve:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(ve))
@@ -42,14 +42,14 @@ async def list_workspace_projects(workspace_id: int, request: Request):
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get workspace projects")
 
 @router.put("/projects/{project_id}/status")
-async def update_project_status(project_id: int, status: str, request: Request):
+async def update_project_status(project_id: int, decision: str, request: Request):
     """Update project status"""
     user = getattr(request.state, "user", None)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     try:
-        project = await projectsService.update_project_status(project_id, status, user["id"])
+        project = await projectsService.update_project_status(project_id, decision, user["id"])
         return project
     except ValueError as ve:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(ve))

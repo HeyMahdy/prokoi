@@ -4,7 +4,7 @@ class WorkspacesService:
     def __init__(self):
         self.workspacesRepo = WorkspacesRepository()
 
-    async def create_workspace(self, organization_id: int, name: str, user_id: int, team_id: int = None):
+    async def create_workspace(self, organization_id: int, name: str, user_id: int):
         """Create a new workspace"""
         name = (name or "").strip()
         if not name:
@@ -16,7 +16,7 @@ class WorkspacesService:
             raise Exception("Access denied to organization")
 
         try:
-            workspace_id = await self.workspacesRepo.create_workspace(organization_id, name, user_id, team_id)
+            workspace_id = await self.workspacesRepo.create_workspace(organization_id, name, user_id)
             if not workspace_id:
                 raise Exception("Failed to create workspace")
 
