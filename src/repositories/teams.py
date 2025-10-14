@@ -74,3 +74,44 @@ class TeamsRepository:
         rows = await db.execute_query(query, (organization_id, user_id))
         print(f"Checking access: user_id={user_id}, org_id={organization_id}, rows={len(rows)}")
         return len(rows) > 0
+
+
+    async def add_team_to_workspace(self, team_id: int, workspace_id: int) :
+        """Add team to workspace"""
+        query = """
+        insert into team_workspaces (team_id, workspace_id) values (%s, %s)
+        """
+        result = await db.execute_insert(query, (team_id, workspace_id))
+        return result
+
+    async def list_workspace_teams(self,workspace_id: int) :
+        """List all teams for a project"""
+        query = """
+        select * from team_workspaces
+        where workspace_id = %s
+        """
+        rows = await db.execute_query(query, (workspace_id,))
+        return rows
+
+    async def add_team_to_projects(self, team_id: int, project_id: int) :
+        """Add team to workspace"""
+        query = """
+        insert into project_teams(team_id,project_id)
+        values (%s, %s) 
+        """
+        result = await db.execute_query(query, (team_id, project_id))
+        return result
+
+    async def list_project_teams(self,project_id: int) :
+        """List all teams for a project"""
+        query = """
+        
+        select * from project_teams
+        where project_id = %s
+        """
+        rows = await db.execute_query(query, (project_id,))
+        return rows
+
+
+
+

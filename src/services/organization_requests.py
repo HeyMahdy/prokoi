@@ -58,7 +58,7 @@ class OrganizationRequestsService:
             print(f"Failed to send request: {e}")
             raise
 
-    async def respond_to_request(self, request_id: int, status: str, user_id: int):
+    async def respond_to_request(self, request_id: int, status: str, user_id: int,organization_id:int):
         """Respond to request (accept/reject)"""
         # Validate status
         valid_statuses = ['accepted', 'rejected']
@@ -75,7 +75,7 @@ class OrganizationRequestsService:
                 raise Exception("Request already processed")
 
             # Update status
-            await self.requestsRepo.update_request_status(request_id, status, user_id)
+            await self.requestsRepo.update_request_status(request_id, status, user_id,organization_id)
 
             # If accepted, add user to organization
             if status == 'accepted':

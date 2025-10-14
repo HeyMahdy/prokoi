@@ -1,4 +1,5 @@
 from src.core.database import db
+import aiomysql
 
 class OrganizationRequestsRepository:
     async def get_outgoing_requests(self, sender_id: int) -> list[dict]:
@@ -39,15 +40,41 @@ class OrganizationRequestsRepository:
         """
         return await db.execute_insert(query, (organization_id, sender_id, receiver_id))
 
-    async def update_request_status(self, request_id: int, status: str, user_id: int) -> bool:
+    async def update_request_status(self, request_id: int, status: str, user_id: int, organization_id: int) -> bool:
         """Update request status (only receiver can accept/reject)"""
-        query = """
-        UPDATE organization_outgoing_requests 
-        SET status = %s, updated_at = CURRENT_TIMESTAMP
-        WHERE id = %s AND receiver_id = %s
-        """
-        await db.execute_query(query, (status, request_id, user_id))
-        return True
+        conn = await db.get_connection()
+        try:
+            await conn.autocommit(False)
+            await conn.begin()
+
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute(
+                    """UPDATE organization_outgoing_requests
+                       SET status     = %s,
+                           updated_at = CURRENT_TIMESTAMP
+                       WHERE id = %s
+                         AND receiver_id = %s""",
+                    (status, request_id, user_id)
+                )
+
+            # Only add user to organization if accepted
+            if status == "accepted":
+                async with conn.cursor(aiomysql.DictCursor) as cur:
+                    await cur.execute(
+                        """INSERT INTO organization_users (user_id, organization_id)
+                           VALUES (%s, %s)""",
+                        (user_id, organization_id)
+                    )
+
+            await conn.commit()
+            return True
+
+        except Exception:
+            await conn.rollback()
+            raise
+        finally:
+            await conn.autocommit(True)
+            await db.release_connection(conn)
 
     async def get_request_by_id(self, request_id: int, user_id: int) -> dict | None:
         """Get request by ID (sender or receiver)"""

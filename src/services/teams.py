@@ -1,8 +1,11 @@
 from src.repositories.teams import TeamsRepository
-
+from src.repositories.workspaces import WorkspacesRepository
+from src.repositories.projects import ProjectsRepository
 class TeamsService:
     def __init__(self):
         self.teamRepo = TeamsRepository()
+        self.workspaceRepo = WorkspacesRepository()
+        self.projectRepo = ProjectsRepository()
 
     async def create_team(self, organization_id: int, name: str, user_id: int):
         """Create a new team"""
@@ -105,3 +108,54 @@ class TeamsService:
         except Exception as e:
             print(f"Failed to delete team: {e}")
             raise
+
+    async def add_team_workspace(self, team_id: int, workspace_id: int):
+        """Add team to workspace"""
+        try:
+            team = await self.teamRepo.get_team_by_id(team_id)
+            if not team:
+                raise Exception("Team not found")
+            workspace = await self.workspaceRepo.get_workspace_by_id(workspace_id)
+            if not workspace:
+                raise Exception("Workspace not found")
+            result = await self.teamRepo.add_team_to_workspace(team_id, workspace_id)
+            return result
+        except Exception as e:
+            print(f"Failed to add team: {e}")
+            raise
+
+    async def get_team_workspace(self, project_id: int):
+        """Get all teams for a workspace"""
+        try:
+            teams = await self.teamRepo.list_workspace_teams(project_id)
+            return teams
+        except Exception as e:
+            print(f"Failed to get project teams: {e}")
+            raise
+
+
+    async def add_team_project(self, team_id: int, project_id: int):
+        """Add team to project"""
+        try:
+            team = await self.teamRepo.get_team_by_id(team_id)
+            if not team:
+                raise Exception("Team not found")
+            project = await self.projectRepo.get_project_by_id(project_id)
+            if not project:
+                raise Exception("Project not found")
+            projects = await self.teamRepo.add_team_to_projects(team_id, project_id)
+            return projects
+        except Exception as e:
+            print(f"Failed to add team: {e}")
+            raise
+
+    async def get_team_project(self, project_id: int):
+        try:
+            team = await self.teamRepo.list_project_teams(project_id)
+            return team
+        except Exception as e:
+            print(f"Failed to get project team: {e}")
+            raise
+
+
+

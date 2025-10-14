@@ -8,14 +8,14 @@ router = APIRouter(prefix="/api", tags=["Workspaces"], dependencies=[Depends(bea
 workspacesService = WorkspacesService()
 
 @router.post("/organizations/{org_id}/workspaces", status_code=status.HTTP_201_CREATED)
-async def create_workspace(org_id: int, name: str, request: Request = None):
+async def create_workspace(org_id: int, name: str, team_id: int = None, request: Request = None):
     """Create workspace in organization"""
     user = getattr(request.state, "user", None)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     try:
-        workspace = await workspacesService.create_workspace(org_id, name, user["id"])
+        workspace = await workspacesService.create_workspace(org_id, name, user["id"], team_id)
         return workspace
     except ValueError as ve:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(ve))

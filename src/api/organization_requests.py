@@ -53,15 +53,15 @@ async def send_request(org_id: int, receiver_email: str, request: Request):
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to send request")
 
-@router.put("/organization-requests/{request_id}/respond")
-async def respond_to_request(request_id: int, decision: str, request: Request):
+@router.put("/organization-requests/{request_id}/respond/{organization_id}")
+async def respond_to_request(request_id: int, decision: str,organization_id:int, request: Request):
     """Respond to request (accept/reject)"""
     user = getattr(request.state, "user", None)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     try:
-        result = await requestsService.respond_to_request(request_id, decision, user["id"])
+        result = await requestsService.respond_to_request(request_id, decision, user["id"],organization_id)
         return result
     except ValueError as ve:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(ve))

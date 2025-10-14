@@ -56,7 +56,7 @@ class OrganizationsRepository:
         SELECT DISTINCT o.id, o.name, o.created_at, o.updated_at 
         FROM organizations o
         JOIN  organization_users ur ON o.id = ur.organization_id
-        where ur.user_id = %s
+        where ur.user_id = %s 
         """
         params = (user_id,)
         result = await db.execute_query(query, params)
