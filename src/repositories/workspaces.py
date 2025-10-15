@@ -58,3 +58,61 @@ class WorkspacesRepository:
         """
         rows = await db.execute_query(query, (organization_id, user_id))
         return len(rows) > 0
+
+    async def user_has_workspace_access(self, user_id: int, workspace_id: int) -> bool:
+        """Check if user has access to workspace"""
+        query = """
+        SELECT 1
+        FROM workspaces w
+        JOIN organization_users ou ON w.organization_id = ou.organization_id
+        WHERE w.id = %s AND ou.user_id = %s
+        LIMIT 1
+        """
+        rows = await db.execute_query(query, (workspace_id, user_id))
+        return len(rows) > 0
+
+    async def get_team_by_id(self, team_id: int) -> dict | None:
+        """Get team by ID"""
+        query = """
+        SELECT t.id, t.name, t.organization_id
+        FROM teams t
+        WHERE t.id = %s
+        LIMIT 1
+        """
+        rows = await db.execute_query(query, (team_id,))
+        return rows[0] if rows else None
+
+    async def assign_team_to_workspace(self, workspace_id: int, team_id: int) -> int:
+        """Assign team to workspace"""
+        conn = await db.get_connection()
+        try:
+            await conn.autocommit(False)
+            await conn.begin()
+
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute(
+                    "INSERT INTO team_workspaces (team_id, workspace_id) VALUES (%s, %s)",
+                    (team_id, workspace_id)
+                )
+                assignment_id = cur.lastrowid
+
+            await conn.commit()
+            return assignment_id
+        except Exception:
+            await conn.rollback()
+            raise
+        finally:
+            await conn.autocommit(True)
+            await db.release_connection(conn)
+
+    async def get_workspace_teams(self, workspace_id: int) -> list[dict]:
+        """Get all teams assigned to workspace"""
+        query = """
+        SELECT tw.id, tw.team_id, tw.workspace_id, tw.created_at, tw.updated_at,
+               t.name as team_name, t.organization_id
+        FROM team_workspaces tw
+        JOIN teams t ON tw.team_id = t.id
+        WHERE tw.workspace_id = %s
+        ORDER BY tw.created_at DESC
+        """
+        return await db.execute_query(query, (workspace_id,))

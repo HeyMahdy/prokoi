@@ -81,3 +81,13 @@ class ProjectsRepository:
         query = "DELETE FROM projects WHERE id = %s"
         await db.execute_query(query, (project_id,))
         return True
+    async def get_project_users(self,project:int):
+        query="""
+        
+        """
+        try:
+         rows = await db.execute_query(query, (project,))
+         return rows
+        except Exception as e:
+            print("error",e)
+

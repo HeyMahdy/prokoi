@@ -42,3 +42,48 @@ class WorkspacesService:
         except Exception as e:
             print(f"Failed to get workspaces: {e}")
             raise
+
+    async def assign_team_to_workspace(self, workspace_id: int, team_id: int, user_id: int):
+        """Assign team to workspace"""
+        # Check if user has access to workspace
+        has_access = await self.workspacesRepo.user_has_workspace_access(user_id, workspace_id)
+        if not has_access:
+            raise Exception("Access denied to workspace")
+
+        # Check if workspace exists
+        workspace = await self.workspacesRepo.get_workspace_by_id(workspace_id)
+        if not workspace:
+            raise Exception("Workspace not found")
+
+        # Check if team exists
+        team = await self.workspacesRepo.get_team_by_id(team_id)
+        if not team:
+            raise Exception("Team not found")
+
+        try:
+            assignment_id = await self.workspacesRepo.assign_team_to_workspace(workspace_id, team_id)
+            return {"id": assignment_id, "workspace_id": workspace_id, "team_id": team_id}
+        except Exception as e:
+            if "Duplicate entry" in str(e) or "unique_team_workspace" in str(e):
+                raise Exception("Team is already assigned to this workspace")
+            print(f"Failed to assign team to workspace: {e}")
+            raise
+
+    async def get_workspace_teams(self, workspace_id: int, user_id: int):
+        """Get all teams assigned to workspace"""
+        # Check if user has access to workspace
+        has_access = await self.workspacesRepo.user_has_workspace_access(user_id, workspace_id)
+        if not has_access:
+            raise Exception("Access denied to workspace")
+
+        # Check if workspace exists
+        workspace = await self.workspacesRepo.get_workspace_by_id(workspace_id)
+        if not workspace:
+            raise Exception("Workspace not found")
+
+        try:
+            teams = await self.workspacesRepo.get_workspace_teams(workspace_id)
+            return teams
+        except Exception as e:
+            print(f"Failed to get workspace teams: {e}")
+            raise

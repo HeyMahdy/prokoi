@@ -42,3 +42,38 @@ class IssueResponse(BaseModel):
     updated_at: Optional[datetime] = None
 
 
+# Issue Assignment Schemas
+class IssueAssignmentCreate(BaseModel):
+    assigned_to: int = Field(..., gt=0, description="User ID to assign the issue to")
+    
+
+
+
+class IssueAssignmentResponse(BaseModel):
+    id: int
+    issue_id: int
+    assigned_to: int
+    assigned_by: int
+    assigned_at: datetime
+    assigned_to_name: Optional[str] = None
+    assigned_to_email: Optional[str] = None
+    assigned_by_name: Optional[str] = None
+    assigned_by_email: Optional[str] = None
+
+
+class IssueStatusUpdate(BaseModel):
+    status: str = Field(..., min_length=1, max_length=50)
+    
+    class Config:
+        # Common status values for validation
+        schema_extra = {
+            "example": {
+                "status": "open"
+            }
+        }
+
+
+class IssueWithAssignment(IssueResponse):
+    assignment: Optional[IssueAssignmentResponse] = None
+
+

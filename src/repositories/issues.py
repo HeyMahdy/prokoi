@@ -174,6 +174,98 @@ class IssueRepository:
         result = await db.execute_query(query, [issue_id])
         return result[0]['count'] > 0 if result else False
 
+    # Issue Assignment methods
+    async def assign_issue(self, issue_id: int, assigned_to: int, assigned_by: int) -> int:
+        """Assign an issue to a user"""
+        query = """
+        INSERT INTO issue_assignments (issue_id, assigned_to, assigned_by)
+        VALUES (%s, %s, %s)
+        """
+        try:
+            return await db.execute_insert(query, [issue_id, assigned_to, assigned_by])
+        except Exception as e:
+            print("Error assigning issue:", e)
+            raise Exception("Failed to assign issue")
+
+    async def unassign_issue(self, issue_id: int) -> bool:
+        """Remove assignment from an issue"""
+        query = """
+        DELETE FROM issue_assignments 
+        WHERE issue_id = %s
+        """
+        try:
+            await db.execute_query(query, [issue_id])
+            return True
+        except Exception as e:
+            print("Error unassigning issue:", e)
+            raise Exception("Failed to unassign issue")
+
+    async def get_issue_assignment(self, issue_id: int) -> dict | None:
+        """Get current assignment for an issue"""
+        query = """
+        SELECT ia.id, ia.issue_id, ia.assigned_to, ia.assigned_by, ia.assigned_at,
+               u.name as assigned_to_name, u.email as assigned_to_email,
+               assigner.name as assigned_by_name, assigner.email as assigned_by_email
+        FROM issue_assignments ia
+        LEFT JOIN users u ON ia.assigned_to = u.id
+        LEFT JOIN users assigner ON ia.assigned_by = assigner.id
+        WHERE ia.issue_id = %s
+        LIMIT 1
+        """
+        result = await db.execute_query(query, [issue_id])
+        return result[0] if result else None
+
+    async def is_issue_assigned(self, issue_id: int) -> bool:
+        """Check if an issue is currently assigned"""
+        query = """
+        SELECT COUNT(*) as count 
+        FROM issue_assignments 
+        WHERE issue_id = %s
+        """
+        result = await db.execute_query(query, [issue_id])
+        return result[0]['count'] > 0 if result else False
+
+    async def get_user_assigned_issues(self, user_id: int, project_id: int = None) -> list[dict]:
+        """Get all issues assigned to a user"""
+        if project_id:
+            query = """
+            SELECT i.id, i.project_id, i.type_id, i.title, i.description, 
+                   i.story_points, i.status, i.priority, i.created_by, i.parent_issue_id,
+                   i.created_at, i.updated_at, ia.assigned_at, ia.assigned_by
+            FROM issue_assignments ia
+            JOIN issues i ON ia.issue_id = i.id
+            WHERE ia.assigned_to = %s AND i.project_id = %s
+            ORDER BY ia.assigned_at DESC
+            """
+            params = [user_id, project_id]
+        else:
+            query = """
+            SELECT i.id, i.project_id, i.type_id, i.title, i.description, 
+                   i.story_points, i.status, i.priority, i.created_by, i.parent_issue_id,
+                   i.created_at, i.updated_at, ia.assigned_at, ia.assigned_by
+            FROM issue_assignments ia
+            JOIN issues i ON ia.issue_id = i.id
+            WHERE ia.assigned_to = %s
+            ORDER BY ia.assigned_at DESC
+            """
+            params = [user_id]
+        
+        return await db.execute_query(query, params)
+
+    async def update_assignment(self, issue_id: int, assigned_to: int, assigned_by: int) -> bool:
+        """Update existing assignment"""
+        query = """
+        UPDATE issue_assignments 
+        SET assigned_to = %s, assigned_by = %s, assigned_at = CURRENT_TIMESTAMP
+        WHERE issue_id = %s
+        """
+        try:
+            await db.execute_query(query, [assigned_to, assigned_by, issue_id])
+            return True
+        except Exception as e:
+            print("Error updating assignment:", e)
+            raise Exception("Failed to update assignment")
+
 
 
 

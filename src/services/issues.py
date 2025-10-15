@@ -1,5 +1,6 @@
 from src.repositories.issues import IssueRepository
-from src.schemas.issues import IssueCreate, IssueUpdate, IssueResponse
+from src.repositories.users import UserRepository
+from src.schemas.issues import IssueCreate, IssueUpdate, IssueResponse, IssueAssignmentCreate, IssueAssignmentResponse, IssueStatusUpdate, IssueWithAssignment
 from typing import List, Optional
 from datetime import datetime
 
@@ -7,6 +8,7 @@ from datetime import datetime
 class IssuesService:
     def __init__(self):
         self.issue_repo = IssueRepository()
+        self.user_repo = UserRepository()
 
     async def create_issue(self, issue_data: IssueCreate, created_by: int) -> IssueResponse:
         """Create a new issue"""
@@ -158,3 +160,124 @@ class IssuesService:
             
         except Exception as e:
             raise Exception(f"Failed to fetch filtered issues: {str(e)}")
+
+    # Issue Assignment methods
+    async def assign_issue(self, issue_id: int, assignment_data: IssueAssignmentCreate, assigned_by: int) -> IssueAssignmentResponse:
+        """Assign an issue to a user"""
+        try:
+            # Check if issue exists
+            issue = await self.issue_repo.get_issue_by_id(issue_id)
+            if not issue:
+                raise ValueError("Issue not found")
+
+            # Check if assigned user exists
+            assigned_user = await self.user_repo.find_user_by_id(assignment_data.assigned_to)
+            if not assigned_user:
+                raise ValueError("Assigned user not found")
+
+            # Check if issue is already assigned
+            is_assigned = await self.issue_repo.is_issue_assigned(issue_id)
+            if is_assigned:
+                # Update existing assignment
+                await self.issue_repo.update_assignment(issue_id, assignment_data.assigned_to, assigned_by)
+            else:
+                # Create new assignment
+                await self.issue_repo.assign_issue(issue_id, assignment_data.assigned_to, assigned_by)
+
+            # Get the assignment details
+            assignment = await self.issue_repo.get_issue_assignment(issue_id)
+            if not assignment:
+                raise Exception("Assignment not found after creation")
+
+            return IssueAssignmentResponse(**assignment)
+
+        except ValueError:
+            raise  # Re-raise validation errors
+        except Exception as e:
+            raise Exception(f"Failed to assign issue: {str(e)}")
+
+    async def unassign_issue(self, issue_id: int) -> bool:
+        """Remove assignment from an issue"""
+        try:
+            # Check if issue exists
+            issue = await self.issue_repo.get_issue_by_id(issue_id)
+            if not issue:
+                raise ValueError("Issue not found")
+
+            # Check if issue is assigned
+            is_assigned = await self.issue_repo.is_issue_assigned(issue_id)
+            if not is_assigned:
+                raise ValueError("Issue is not currently assigned")
+
+            # Remove assignment
+            await self.issue_repo.unassign_issue(issue_id)
+            return True
+
+        except ValueError:
+            raise  # Re-raise validation errors
+        except Exception as e:
+            raise Exception(f"Failed to unassign issue: {str(e)}")
+
+    async def get_issue_assignment(self, issue_id: int) -> Optional[IssueAssignmentResponse]:
+        """Get assignment details for an issue"""
+        try:
+            assignment = await self.issue_repo.get_issue_assignment(issue_id)
+            if not assignment:
+                return None
+            
+            return IssueAssignmentResponse(**assignment)
+
+        except Exception as e:
+            raise Exception(f"Failed to fetch assignment: {str(e)}")
+
+    async def get_issue_with_assignment(self, issue_id: int) -> Optional[IssueWithAssignment]:
+        """Get issue with assignment details"""
+        try:
+            # Get issue details
+            issue = await self.issue_repo.get_issue_by_id(issue_id)
+            if not issue:
+                return None
+
+            # Get assignment details
+            assignment = await self.issue_repo.get_issue_assignment(issue_id)
+            
+            # Create response
+            issue_response = IssueResponse(**issue)
+            assignment_response = IssueAssignmentResponse(**assignment) if assignment else None
+            
+            return IssueWithAssignment(
+                **issue_response.dict(),
+                assignment=assignment_response
+            )
+
+        except Exception as e:
+            raise Exception(f"Failed to fetch issue with assignment: {str(e)}")
+
+    async def get_user_assigned_issues(self, user_id: int, project_id: int = None) -> List[IssueResponse]:
+        """Get all issues assigned to a user"""
+        try:
+            issues = await self.issue_repo.get_user_assigned_issues(user_id, project_id)
+            return [IssueResponse(**issue) for issue in issues]
+
+        except Exception as e:
+            raise Exception(f"Failed to fetch assigned issues: {str(e)}")
+
+    async def update_issue_status(self, issue_id: int, status_data: IssueStatusUpdate) -> IssueResponse:
+        """Update issue status"""
+        try:
+            # Check if issue exists
+            existing = await self.issue_repo.get_issue_by_id(issue_id)
+            if not existing:
+                raise ValueError("Issue not found")
+
+            # Update the issue status
+            await self.issue_repo.update_issue(issue_id, status=status_data.status)
+
+            # Fetch the updated issue
+            updated_issue = await self.issue_repo.get_issue_by_id(issue_id)
+            return IssueResponse(**updated_issue)
+
+        except ValueError:
+            raise  # Re-raise validation errors
+        except Exception as e:
+            raise Exception(f"Failed to update issue status: {str(e)}")

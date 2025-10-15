@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, status, Depends, Query
 from fastapi.security import HTTPBearer
 from src.services.issues import IssuesService
-from src.schemas.issues import IssueCreate, IssueUpdate, IssueResponse
+from src.schemas.issues import IssueCreate, IssueUpdate, IssueResponse, IssueAssignmentCreate, IssueAssignmentResponse, IssueStatusUpdate
 from typing import List, Optional
 
 bearer = HTTPBearer()
@@ -156,15 +156,14 @@ async def get_sub_issues(parent_issue_id: int, request: Request):
 
 # Additional utility endpoints
 @router.patch("/issues/{issue_id}/status", response_model=IssueResponse, status_code=status.HTTP_200_OK)
-async def update_issue_status(issue_id: int, Status: str, request: Request):
+async def update_issue_status_patch(issue_id: int, status_data: IssueStatusUpdate, request: Request):
     """Update only the status of an issue"""
     user = getattr(request.state, "user", None)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     try:
-        issue_data = IssueUpdate(status=Status)
-        issue = await issues_service.update_issue(issue_id, issue_data)
+        issue = await issues_service.update_issue_status(issue_id, status_data)
         return issue
     except ValueError as ve:
         if "not found" in str(ve).lower():
@@ -193,3 +192,97 @@ async def update_issue_priority(issue_id: int, priority: str, request: Request):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update issue priority")
+
+
+# Issue Assignment endpoints
+@router.post("/issues/{issue_id}/assign", response_model=IssueAssignmentResponse, status_code=status.HTTP_200_OK)
+async def assign_issue(issue_id: int, assignment_data: IssueAssignmentCreate, request: Request):
+    """Assign an issue to a user"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        assignment = await issues_service.assign_issue(issue_id, assignment_data, user["id"])
+        return assignment
+    except ValueError as ve:
+        if "not found" in str(ve).lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(ve))
+        else:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to assign issue")
+
+
+@router.post("/issues/{issue_id}/unassign", status_code=status.HTTP_200_OK)
+async def unassign_issue(issue_id: int, request: Request):
+    """Unassign an issue"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        await issues_service.unassign_issue(issue_id)
+        return {"message": "Issue unassigned successfully"}
+    except ValueError as ve:
+        if "not found" in str(ve).lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(ve))
+        else:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to unassign issue")
+
+
+@router.put("/issues/{issue_id}/status", response_model=IssueResponse, status_code=status.HTTP_200_OK)
+async def update_issue_status(issue_id: int, status_data: IssueStatusUpdate, request: Request):
+    """Update issue status"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        issue = await issues_service.update_issue_status(issue_id, status_data)
+        return issue
+    except ValueError as ve:
+        if "not found" in str(ve).lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(ve))
+        else:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update issue status")
+
+
+@router.get("/issues/{issue_id}/assignment", response_model=IssueAssignmentResponse, status_code=status.HTTP_200_OK)
+async def get_issue_assignment(issue_id: int, request: Request):
+    """Get assignment details for an issue"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        assignment = await issues_service.get_issue_assignment(issue_id)
+        if not assignment:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue is not assigned")
+        return assignment
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch assignment")
+
+
+@router.get("/users/{user_id}/assigned-issues", response_model=List[IssueResponse], status_code=status.HTTP_200_OK)
+async def get_user_assigned_issues(
+    user_id: int, 
+    request: Request,
+    project_id: Optional[int] = Query(None, description="Filter by project ID")
+):
+    """Get all issues assigned to a user"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        issues = await issues_service.get_user_assigned_issues(user_id, project_id)
+        return issues
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch assigned issues")
