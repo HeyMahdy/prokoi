@@ -65,3 +65,61 @@ async def update_project_status(project_id: int, decision: str, request: Request
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update project status")
+
+@router.post("/projects/{project_id}/teams", status_code=status.HTTP_201_CREATED)
+async def assign_team_to_project(project_id: int, team_id: int, request: Request):
+    """Assign team to project"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        assignment = await projectsService.assign_team_to_project(project_id, team_id, user["id"])
+        return assignment
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(ve))
+    except Exception as e:
+        if "Access denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        elif "already assigned" in str(e):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+        elif "Project not found" in str(e) or "Team not found" in str(e):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to assign team to project")
+
+@router.get("/projects/{project_id}/teams")
+async def list_project_teams(project_id: int, request: Request):
+    """List all teams assigned to project"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        teams = await projectsService.get_project_teams(project_id, user["id"])
+        return teams
+    except Exception as e:
+        if "Access denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        elif "Project not found" in str(e):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get project teams")
+
+@router.get("/projects/{project_id}/users")
+async def list_project_users(project_id: int, request: Request):
+    """List all users assigned to project"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        users = await projectsService.get_project_users(project_id, user["id"])
+        return users
+    except Exception as e:
+        if "Access denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        elif "Project not found" in str(e):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get project users")

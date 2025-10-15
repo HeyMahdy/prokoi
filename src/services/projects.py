@@ -72,3 +72,64 @@ class ProjectsService:
             print(f"Failed to update project status: {e}")
             raise
 
+    async def assign_team_to_project(self, project_id: int, team_id: int, user_id: int):
+        """Assign team to project"""
+        # Check if user has access to project (through workspace)
+        project = await self.projectsRepo.get_project_by_id(project_id)
+        if not project:
+            raise Exception("Project not found")
+
+        has_access = await self.projectsRepo.user_has_workspace_access(user_id, project['workspace_id'])
+        if not has_access:
+            raise Exception("Access denied to project")
+
+        # Check if team exists
+        team = await self.projectsRepo.get_team_by_id(team_id)
+        if not team:
+            raise Exception("Team not found")
+
+        try:
+            assignment_id = await self.projectsRepo.assign_team_to_project(project_id, team_id)
+            return {"id": assignment_id, "project_id": project_id, "team_id": team_id}
+        except Exception as e:
+            if "Duplicate entry" in str(e) or "unique_project_team" in str(e):
+                raise Exception("Team is already assigned to this project")
+            print(f"Failed to assign team to project: {e}")
+            raise
+
+    async def get_project_teams(self, project_id: int, user_id: int):
+        """Get all teams assigned to project"""
+        # Check if user has access to project (through workspace)
+        project = await self.projectsRepo.get_project_by_id(project_id)
+        if not project:
+            raise Exception("Project not found")
+
+        has_access = await self.projectsRepo.user_has_workspace_access(user_id, project['workspace_id'])
+        if not has_access:
+            raise Exception("Access denied to project")
+
+        try:
+            teams = await self.projectsRepo.get_project_teams(project_id)
+            return teams
+        except Exception as e:
+            print(f"Failed to get project teams: {e}")
+            raise
+
+    async def get_project_users(self, project_id: int, user_id: int):
+        """Get all users assigned to project"""
+        # Check if user has access to project (through workspace)
+        project = await self.projectsRepo.get_project_by_id(project_id)
+        if not project:
+            raise Exception("Project not found")
+
+        has_access = await self.projectsRepo.user_has_workspace_access(user_id, project['workspace_id'])
+        if not has_access:
+            raise Exception("Access denied to project")
+
+        try:
+            users = await self.projectsRepo.get_project_users(project_id)
+            return users
+        except Exception as e:
+            print(f"Failed to get project users: {e}")
+            raise
+
