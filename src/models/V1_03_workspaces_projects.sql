@@ -66,14 +66,3 @@ CREATE TABLE project_users (
     SET NULL,
         UNIQUE KEY unique_project_user (project_id, user_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
-CREATE TABLE workspace_projects (
-    project_id INT NOT NULL,
-    workspace_id INT NOT NULL,
-    INDEX idx_workspace_projects_project_id (project_id),
-    INDEX idx_workspace_projects_workspace_id (workspace_id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (project_id, workspace_id),
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
