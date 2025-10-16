@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, status, Depends
 from src.services.sprints import SprintsService
 from src.schemas.sprints import SprintCreate, SprintUpdate, SprintResponse
+from src.schemas.sprint_planning import IssueAddToSprint, SprintIssueResponse, SprintBacklogReorder
 from fastapi.security import HTTPBearer
 
 bearer = HTTPBearer()
@@ -157,3 +158,81 @@ async def cancel_sprint(sprint_id: int, request: Request):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to cancel sprint")
+
+@router.post("/sprints/{sprint_id}/issues")
+async def add_issues_to_sprint(sprint_id: int, issue_data: IssueAddToSprint, request: Request):
+    """Add issues to sprint"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        result = await sprintsService.add_issues_to_sprint(sprint_id, issue_data, user["id"])
+        return result
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(ve))
+    except Exception as e:
+        if "Access denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        elif "Sprint not found" in str(e):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to add issues to sprint")
+
+@router.delete("/sprints/{sprint_id}/issues/{issue_id}")
+async def remove_issue_from_sprint(sprint_id: int, issue_id: int, request: Request):
+    """Remove issue from sprint"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        result = await sprintsService.remove_issue_from_sprint(sprint_id, issue_id, user["id"])
+        return result
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(ve))
+    except Exception as e:
+        if "Access denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        elif "Sprint not found" in str(e):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to remove issue from sprint")
+
+@router.get("/sprints/{sprint_id}/issues", response_model=list[SprintIssueResponse])
+async def get_sprint_issues(sprint_id: int, request: Request):
+    """List sprint issues"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        issues = await sprintsService.get_sprint_issues(sprint_id, user["id"])
+        return issues
+    except Exception as e:
+        if "Access denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        elif "Sprint not found" in str(e):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get sprint issues")
+
+@router.put("/sprints/{sprint_id}/issues/reorder")
+async def reorder_sprint_backlog(sprint_id: int, reorder_data: SprintBacklogReorder, request: Request):
+    """Reorder sprint backlog"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        result = await sprintsService.reorder_sprint_backlog(sprint_id, reorder_data, user["id"])
+        return result
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(ve))
+    except Exception as e:
+        if "Access denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        elif "Sprint not found" in str(e):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to reorder sprint backlog")

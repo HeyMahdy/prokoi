@@ -1,5 +1,6 @@
 from src.repositories.sprints import SprintsRepository
 from src.schemas.sprints import SprintCreate, SprintUpdate, SprintStatus
+from src.schemas.sprint_planning import IssueAddToSprint, SprintBacklogReorder
 
 class SprintsService:
     def __init__(self):
@@ -192,4 +193,105 @@ class SprintsService:
             return updated_sprint
         except Exception as e:
             print(f"Failed to cancel sprint: {e}")
+            raise
+
+    async def add_issues_to_sprint(self, sprint_id: int, issue_data: IssueAddToSprint, user_id: int):
+        """Add issues to sprint"""
+        # Get sprint first to check project access
+        sprint = await self.sprintsRepo.get_sprint_by_id(sprint_id)
+        if not sprint:
+            raise Exception("Sprint not found")
+
+        # Check if user has access to project
+        has_access = await self.sprintsRepo.user_has_project_access(user_id, sprint['project_id'])
+        if not has_access:
+            raise Exception("Access denied to sprint")
+
+        # Validate issues exist and belong to the same project
+        for issue_id in issue_data.issue_ids:
+            issue = await self.sprintsRepo.get_issue_by_id(issue_id)
+            if not issue:
+                raise ValueError(f"Issue {issue_id} not found")
+            if issue['project_id'] != sprint['project_id']:
+                raise ValueError(f"Issue {issue_id} does not belong to the same project as sprint")
+
+        try:
+            await self.sprintsRepo.add_issues_to_sprint(sprint_id, issue_data.issue_ids)
+            return {"message": f"Successfully added {len(issue_data.issue_ids)} issues to sprint"}
+        except Exception as e:
+            print(f"Failed to add issues to sprint: {e}")
+            raise
+
+    async def remove_issue_from_sprint(self, sprint_id: int, issue_id: int, user_id: int):
+        """Remove issue from sprint"""
+        # Get sprint first to check project access
+        sprint = await self.sprintsRepo.get_sprint_by_id(sprint_id)
+        if not sprint:
+            raise Exception("Sprint not found")
+
+        # Check if user has access to project
+        has_access = await self.sprintsRepo.user_has_project_access(user_id, sprint['project_id'])
+        if not has_access:
+            raise Exception("Access denied to sprint")
+
+        # Check if issue exists in sprint
+        issue_in_sprint = await self.sprintsRepo.issue_exists_in_sprint(sprint_id, issue_id)
+        if not issue_in_sprint:
+            raise ValueError("Issue is not in this sprint")
+
+        try:
+            await self.sprintsRepo.remove_issue_from_sprint(sprint_id, issue_id)
+            return {"message": "Successfully removed issue from sprint"}
+        except Exception as e:
+            print(f"Failed to remove issue from sprint: {e}")
+            raise
+
+    async def get_sprint_issues(self, sprint_id: int, user_id: int):
+        """Get all issues in sprint"""
+        # Get sprint first to check project access
+        sprint = await self.sprintsRepo.get_sprint_by_id(sprint_id)
+        if not sprint:
+            raise Exception("Sprint not found")
+
+        # Check if user has access to project
+        has_access = await self.sprintsRepo.user_has_project_access(user_id, sprint['project_id'])
+        if not has_access:
+            raise Exception("Access denied to sprint")
+
+        try:
+            issues = await self.sprintsRepo.get_sprint_issues(sprint_id)
+            return issues
+        except Exception as e:
+            print(f"Failed to get sprint issues: {e}")
+            raise
+
+    async def reorder_sprint_backlog(self, sprint_id: int, reorder_data: SprintBacklogReorder, user_id: int):
+        """Reorder sprint backlog"""
+        # Get sprint first to check project access
+        sprint = await self.sprintsRepo.get_sprint_by_id(sprint_id)
+        if not sprint:
+            raise Exception("Sprint not found")
+
+        # Check if user has access to project
+        has_access = await self.sprintsRepo.user_has_project_access(user_id, sprint['project_id'])
+        if not has_access:
+            raise Exception("Access denied to sprint")
+
+        # Validate that all issues belong to this sprint
+        current_issues = await self.sprintsRepo.get_sprint_issues(sprint_id)
+        current_issue_ids = {issue['issue_id'] for issue in current_issues}
+        
+        for issue_id in reorder_data.issue_ids:
+            if issue_id not in current_issue_ids:
+                raise ValueError(f"Issue {issue_id} is not in this sprint")
+
+        # Validate that all sprint issues are included in the reorder
+        if set(reorder_data.issue_ids) != current_issue_ids:
+            raise ValueError("Reorder must include all issues currently in the sprint")
+
+        try:
+            await self.sprintsRepo.reorder_sprint_backlog(sprint_id, reorder_data.issue_ids)
+            return {"message": "Successfully reordered sprint backlog"}
+        except Exception as e:
+            print(f"Failed to reorder sprint backlog: {e}")
             raise
