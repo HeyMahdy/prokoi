@@ -1,11 +1,14 @@
 from fastapi import APIRouter, HTTPException, Request, status, Depends
 from src.services.projects import ProjectsService
+from src.services.velocity import VelocityService
+from src.schemas.velocity import VelocityUpdate, VelocityResponse
 from fastapi.security import HTTPBearer
 from src.services.view import View
 bearer = HTTPBearer()
 router = APIRouter(prefix="/api", tags=["Projects"], dependencies=[Depends(bearer)])
 
 projectsService = ProjectsService()
+velocityService = VelocityService()
 view = View()
 
 @router.post("/workspaces/{workspace_id}/projects", status_code=status.HTTP_201_CREATED)
@@ -123,3 +126,37 @@ async def list_project_users(project_id: int, request: Request):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get project users")
+
+@router.get("/projects/{project_id}/teams/{team_id}/velocity", response_model=VelocityResponse)
+async def get_team_project_velocity(project_id: int, team_id: int, request: Request):
+    """Get team velocity for specific project"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        velocity = await velocityService.get_team_project_velocity(team_id, project_id, user["id"])
+        return velocity
+    except Exception as e:
+        if "Access denied" in str(e) or "Team is not assigned" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get team project velocity")
+
+@router.put("/projects/{project_id}/teams/{team_id}/velocity", response_model=VelocityResponse)
+async def update_team_project_velocity(project_id: int, team_id: int, velocity_data: VelocityUpdate, request: Request):
+    """Update team velocity for specific project"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        velocity = await velocityService.update_team_project_velocity(team_id, project_id, velocity_data, user["id"])
+        return velocity
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(ve))
+    except Exception as e:
+        if "Access denied" in str(e) or "Team is not assigned" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update team project velocity")

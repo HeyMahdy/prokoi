@@ -1,0 +1,159 @@
+from fastapi import APIRouter, HTTPException, Request, status, Depends
+from src.services.sprints import SprintsService
+from src.schemas.sprints import SprintCreate, SprintUpdate, SprintResponse
+from fastapi.security import HTTPBearer
+
+bearer = HTTPBearer()
+router = APIRouter(prefix="/api", tags=["Sprints"], dependencies=[Depends(bearer)])
+
+sprintsService = SprintsService()
+
+@router.post("/projects/{project_id}/sprints", response_model=SprintResponse, status_code=status.HTTP_201_CREATED)
+async def create_sprint(project_id: int, sprint_data: SprintCreate, request: Request):
+    """Create sprint in project"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        sprint = await sprintsService.create_sprint(project_id, sprint_data, user["id"])
+        return sprint
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(ve))
+    except Exception as e:
+        if "Access denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create sprint")
+
+@router.get("/projects/{project_id}/sprints", response_model=list[SprintResponse])
+async def list_project_sprints(project_id: int, request: Request):
+    """List all sprints in project"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        sprints = await sprintsService.get_project_sprints(project_id, user["id"])
+        return sprints
+    except Exception as e:
+        if "Access denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get project sprints")
+
+@router.get("/sprints/{sprint_id}", response_model=SprintResponse)
+async def get_sprint_details(sprint_id: int, request: Request):
+    """Get sprint details"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        sprint = await sprintsService.get_sprint_by_id(sprint_id, user["id"])
+        return sprint
+    except Exception as e:
+        if "Access denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        elif "Sprint not found" in str(e):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get sprint details")
+
+@router.put("/sprints/{sprint_id}", response_model=SprintResponse)
+async def update_sprint(sprint_id: int, sprint_data: SprintUpdate, request: Request):
+    """Update sprint"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        sprint = await sprintsService.update_sprint(sprint_id, sprint_data, user["id"])
+        return sprint
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(ve))
+    except Exception as e:
+        if "Access denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        elif "Sprint not found" in str(e):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update sprint")
+
+@router.delete("/sprints/{sprint_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_sprint(sprint_id: int, request: Request):
+    """Delete sprint"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        await sprintsService.delete_sprint(sprint_id, user["id"])
+        return None
+    except Exception as e:
+        if "Access denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        elif "Sprint not found" in str(e):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete sprint")
+
+@router.post("/sprints/{sprint_id}/start", response_model=SprintResponse)
+async def start_sprint(sprint_id: int, request: Request):
+    """Start sprint"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        sprint = await sprintsService.start_sprint(sprint_id, user["id"])
+        return sprint
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(ve))
+    except Exception as e:
+        if "Access denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        elif "Sprint not found" in str(e):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to start sprint")
+
+@router.post("/sprints/{sprint_id}/complete", response_model=SprintResponse)
+async def complete_sprint(sprint_id: int, request: Request):
+    """Complete sprint"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        sprint = await sprintsService.complete_sprint(sprint_id, user["id"])
+        return sprint
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(ve))
+    except Exception as e:
+        if "Access denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        elif "Sprint not found" in str(e):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to complete sprint")
+
+@router.post("/sprints/{sprint_id}/cancel", response_model=SprintResponse)
+async def cancel_sprint(sprint_id: int, request: Request):
+    """Cancel sprint"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        sprint = await sprintsService.cancel_sprint(sprint_id, user["id"])
+        return sprint
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(ve))
+    except Exception as e:
+        if "Access denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        elif "Sprint not found" in str(e):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to cancel sprint")
