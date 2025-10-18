@@ -8,9 +8,6 @@ class VelocityService:
     async def get_team_velocity_history(self, team_id: int, user_id: int):
         """Get team velocity history across all projects"""
         # Check if user has access to team
-        has_access = await self.velocityRepo.user_has_team_access(user_id, team_id)
-        if not has_access:
-            raise Exception("Access denied to team")
 
         try:
             velocity_history = await self.velocityRepo.get_team_velocity_history(team_id)
@@ -22,9 +19,7 @@ class VelocityService:
     async def update_team_velocity(self, team_id: int, velocity_data: VelocityUpdate, user_id: int):
         """Update team velocity (requires project context)"""
         # Check if user has access to team
-        has_access = await self.velocityRepo.user_has_team_access(user_id, team_id)
-        if not has_access:
-            raise Exception("Access denied to team")
+
 
         # Validate velocity data
         if velocity_data.avg_hours_per_point is not None:

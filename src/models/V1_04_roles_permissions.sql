@@ -2,9 +2,8 @@ CREATE TABLE roles (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
     organization_id INT NOT NULL,
-    UNIQUE KEY uniq_roles_org_name (organization_id, name);
-    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_roles(name, organization_id)
+    UNIQUE KEY uniq_roles_org_name (organization_id, name),
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
 CREATE TABLE permissions (
     id INT AUTO_INCREMENT PRIMARY KEY,

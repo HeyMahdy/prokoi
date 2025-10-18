@@ -42,7 +42,7 @@ async def list_workspace_projects(workspace_id: int, request: Request):
         for project in projects:
             if(await view.can_view_workspace_projects(project["id"], user["id"])):
                 result.append(project)
-        return result
+        return projects
     except Exception as e:
         if "Access denied" in str(e):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))

@@ -270,18 +270,19 @@ async def get_issue_assignment(issue_id: int, request: Request):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch assignment")
 
 
-@router.get("/users/{user_id}/assigned-issues", response_model=List[IssueResponse], status_code=status.HTTP_200_OK)
+@router.get("/users/assigned-issues", response_model=List[IssueResponse], status_code=status.HTTP_200_OK)
 async def get_user_assigned_issues(
-    user_id: int, 
     request: Request,
     project_id: Optional[int] = Query(None, description="Filter by project ID")
 ):
-    """Get all issues assigned to a user"""
+    """Get all issues assigned to the authenticated user"""
     user = getattr(request.state, "user", None)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     try:
+        # Get user_id from JWT token
+        user_id = user["id"]
         issues = await issues_service.get_user_assigned_issues(user_id, project_id)
         return issues
     except Exception as e:

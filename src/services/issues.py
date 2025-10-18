@@ -275,6 +275,12 @@ class IssuesService:
 
             # Fetch the updated issue
             updated_issue = await self.issue_repo.get_issue_by_id(issue_id)
+
+
+
+
+
+
             return IssueResponse(**updated_issue)
 
         except ValueError:

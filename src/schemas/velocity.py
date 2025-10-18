@@ -12,8 +12,7 @@ class VelocityResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+
 
 class TeamVelocityHistory(BaseModel):
     team_id: int
@@ -24,5 +23,4 @@ class TeamVelocityHistory(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+

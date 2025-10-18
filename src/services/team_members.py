@@ -29,9 +29,7 @@ class TeamMembersService:
     async def get_team_members(self, team_id: int, requester_id: int):
         """Get all team members"""
         # Check if requester has access to team
-        has_access = await self.teamMembersRepo.user_has_team_access(requester_id, team_id)
-        if not has_access:
-            raise Exception("Access denied to team")
+
 
         try:
             members = await self.teamMembersRepo.get_team_members(team_id)

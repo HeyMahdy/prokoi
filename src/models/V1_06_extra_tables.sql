@@ -87,15 +87,3 @@ CREATE TABLE team_velocity (
     FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
-CREATE TABLE notifications (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    organization_id INT NULL,
-    text VARCHAR(250) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_notifications_user_id (id),
-    INDEX idx_notifications_organization_id (organization_id),
-    is_seen BOOLEAN NOT NULL DEFAULT FALSE,
-    FOREIGN KEY(user_id) REFERENCES users(id),
-    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;

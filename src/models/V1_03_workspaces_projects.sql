@@ -3,7 +3,6 @@ CREATE TABLE workspaces (
     name VARCHAR(200) NOT NULL,
     /* creator */
     user_id INT NOT NULL,
-    team_id INT NULL,
     organization_id INT NOT NULL,
     INDEX idx_workspaces_user_id (user_id),
     INDEX idx_workspaces_id (id),
@@ -18,14 +17,13 @@ CREATE TABLE projects (
     name VARCHAR(255) NOT NULL,
     workspace_id INT NOT NULL,
     created_by INT NULL,
-    status ENUM('pending', 'active', 'inactive', 'completed') , DEFAULT 'pending';
-    INDEX idx_projects_workspace_id (workspace_id),
-    INDEX idx_projects_id (id),
+    status ENUM('pending', 'active', 'inactive', 'completed') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_projects_workspace_id (workspace_id),
+    INDEX idx_projects_id (id),
     FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
-    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE
-    SET NULL
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 CREATE TABLE team_workspaces (
     id INT AUTO_INCREMENT PRIMARY KEY,

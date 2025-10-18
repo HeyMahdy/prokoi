@@ -46,6 +46,7 @@ class WorkspacesRepository:
         LIMIT 1
         """
         rows = await db.execute_query(query, (workspace_id,))
+        print(rows[0])
         return rows[0] if rows else None
 
     async def user_has_org_access(self, user_id: int, organization_id: int) -> bool:
@@ -105,7 +106,7 @@ class WorkspacesRepository:
             await conn.autocommit(True)
             await db.release_connection(conn)
 
-    async def get_workspace_teams(self, workspace_id: int) -> list[dict]:
+    async def get_workspace_teams(self, workspace_id: int) :
         """Get all teams assigned to workspace"""
         query = """
         SELECT tw.id, tw.team_id, tw.workspace_id, tw.created_at, tw.updated_at,
@@ -115,4 +116,10 @@ class WorkspacesRepository:
         WHERE tw.workspace_id = %s
         ORDER BY tw.created_at DESC
         """
-        return await db.execute_query(query, (workspace_id,))
+        try:
+         result = await db.execute_query(query, (workspace_id,))
+         print(result)
+         return result
+        except Exception as e:
+            print(e)
+            raise

@@ -40,7 +40,7 @@ async def list_organization_workspaces(org_id: int, request: Request):
             f = await view.can_view_workspace(ws["id"], user["id"])
             if(f):
                 results.append(ws)
-        return results
+        return workspaces
     except Exception as e:
         if "Access denied" in str(e):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
