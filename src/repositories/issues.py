@@ -464,6 +464,154 @@ class IssueRepository:
         """
         return await db.execute_query(query)
 
+    # Label management methods
+    async def create_label(self, project_id: int, name: str, description: str = None, color: str = None):
+        """Create a new label for a project"""
+        query = """
+        INSERT INTO labels (project_id, name, description, color) 
+        VALUES (%s, %s, %s, %s)
+        """
+        return await db.execute_insert(query, [project_id, name, description, color])
+
+    async def get_project_labels(self, project_id: int):
+        """Get all labels for a specific project"""
+        query = """
+        SELECT id, project_id, name, description, color, created_at
+        FROM labels 
+        WHERE project_id = %s
+        ORDER BY name ASC
+        """
+        return await db.execute_query(query, [project_id])
+
+    async def get_label_by_id(self, label_id: int):
+        """Get a specific label by ID"""
+        query = """
+        SELECT id, project_id, name, description, color, created_at
+        FROM labels 
+        WHERE id = %s
+        """
+        result = await db.execute_query(query, [label_id])
+        return result[0] if result else None
+
+    async def update_label(self, label_id: int, **kwargs):
+        """Update an existing label"""
+        # Build dynamic query based on provided fields
+        set_clauses = []
+        values = []
+        
+        for field, value in kwargs.items():
+            if value is not None:
+                set_clauses.append(f"{field} = %s")
+                values.append(value)
+        
+        if not set_clauses:
+            return None
+            
+        query = f"""
+        UPDATE labels 
+        SET {', '.join(set_clauses)}
+        WHERE id = %s
+        """
+        values.append(label_id)
+        return await db.execute_query(query, values)
+
+    async def delete_label(self, label_id: int):
+        """Delete a label"""
+        query = """
+        DELETE FROM labels 
+        WHERE id = %s
+        """
+        return await db.execute_query(query, [label_id])
+
+    async def label_exists(self, label_id: int):
+        """Check if a label exists"""
+        query = """
+        SELECT COUNT(*) as count 
+        FROM labels 
+        WHERE id = %s
+        """
+        result = await db.execute_query(query, [label_id])
+        return result[0]['count'] > 0 if result else False
+
+    async def label_name_exists_in_project(self, project_id: int, name: str, exclude_label_id: int = None):
+        """Check if a label name already exists in a project"""
+        if exclude_label_id:
+            query = """
+            SELECT COUNT(*) as count 
+            FROM labels 
+            WHERE project_id = %s AND name = %s AND id != %s
+            """
+            result = await db.execute_query(query, [project_id, name, exclude_label_id])
+        else:
+            query = """
+            SELECT COUNT(*) as count 
+            FROM labels 
+            WHERE project_id = %s AND name = %s
+            """
+            result = await db.execute_query(query, [project_id, name])
+        return result[0]['count'] > 0 if result else False
+
+    # Issue label methods
+    async def add_label_to_issue(self, issue_id: int, label_id: int):
+        """Add a label to an issue"""
+        query = """
+        INSERT IGNORE INTO issue_labels (issue_id, label_id) 
+        VALUES (%s, %s)
+        """
+        return await db.execute_query(query, [issue_id, label_id])
+
+    async def remove_label_from_issue(self, issue_id: int, label_id: int):
+        """Remove a label from an issue"""
+        query = """
+        DELETE FROM issue_labels 
+        WHERE issue_id = %s AND label_id = %s
+        """
+        return await db.execute_query(query, [issue_id, label_id])
+
+    async def get_issue_labels(self, issue_id: int):
+        """Get all labels for a specific issue"""
+        query = """
+        SELECT il.issue_id, il.label_id, l.name as label_name, l.color as label_color
+        FROM issue_labels il
+        JOIN labels l ON il.label_id = l.id
+        WHERE il.issue_id = %s
+        ORDER BY l.name ASC
+        """
+        return await db.execute_query(query, [issue_id])
+
+    async def get_issues_by_label(self, project_id: int, label_id: int):
+        """Get all issues with a specific label in a project"""
+        query = """
+        SELECT DISTINCT i.id, i.project_id, i.type_id, i.title, i.description, 
+               i.story_points, i.status, i.priority, i.created_by, i.parent_issue_id,
+               i.created_at, i.updated_at
+        FROM issues i
+        JOIN issue_labels il ON i.id = il.issue_id
+        WHERE i.project_id = %s AND il.label_id = %s
+        ORDER BY i.created_at DESC
+        """
+        return await db.execute_query(query, [project_id, label_id])
+
+    async def issue_has_label(self, issue_id: int, label_id: int):
+        """Check if an issue has a specific label"""
+        query = """
+        SELECT COUNT(*) as count 
+        FROM issue_labels 
+        WHERE issue_id = %s AND label_id = %s
+        """
+        result = await db.execute_query(query, [issue_id, label_id])
+        return result[0]['count'] > 0 if result else False
+
+    async def get_label_usage_count(self, label_id: int):
+        """Get the number of issues using a specific label"""
+        query = """
+        SELECT COUNT(*) as count 
+        FROM issue_labels 
+        WHERE label_id = %s
+        """
+        result = await db.execute_query(query, [label_id])
+        return result[0]['count'] if result else 0
+
 
 
 

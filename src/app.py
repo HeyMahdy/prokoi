@@ -15,6 +15,7 @@ from src.api.organization_requests import router as organization_requests_router
 from src.api.issue_types import router as issue_types_router
 from src.api.issues import router as issues_router
 from src.api.analytics import router as analytics_router
+from src.api.labels import router as labels_router
 from src.api.sprints import router as sprints_router
 from src.api.skills import router as skills_router
 from src.api.issue_skills import router as issue_skills_router
@@ -74,6 +75,7 @@ app.include_router(organization_requests_router)
 app.include_router(issue_types_router)
 app.include_router(issues_router)
 app.include_router(analytics_router)
+app.include_router(labels_router)
 app.include_router(sprints_router)
 app.include_router(skills_router)
 app.include_router(issue_skills_router)
