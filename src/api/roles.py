@@ -15,8 +15,7 @@ router = APIRouter(prefix="/api/roles", tags=["roles"],dependencies=[Depends(bea
 @router.post(
     "/create",
     status_code=status.HTTP_201_CREATED,
-    description="Create a new role for the given organization. Requires `org_id` and `name` of the role.",
-    dependencies=[Depends(require_permissions(["role.create", "all"]))],
+    description="Create a new role for the given organization. Requires `org_id` and `name` of the role."
 )
 async def create_role(org_id: int, name: str, request: Request):
     user = getattr(request.state, "user", None)
@@ -34,8 +33,7 @@ async def create_role(org_id: int, name: str, request: Request):
 @router.get(
     "/{org_id}/roles",
     status_code=status.HTTP_200_OK,
-    description="Get all roles for the given organization.",
-    dependencies=[Depends(require_permissions(["role.view", "role.admin", "all"]))],
+    description="Get all roles for the given organization."
 )
 async def get_all_roles(org_id: int, request: Request):
     user = getattr(request.state, "user", None)
@@ -53,9 +51,7 @@ async def get_all_roles(org_id: int, request: Request):
 @router.get(
     "/permissions",
     status_code=status.HTTP_200_OK,
-    description="Get all permissions list.",
-    dependencies=[Depends(require_permissions(["role.view_permissions", "role.admin", "all"]))],
-)
+    description="Get all permissions list.")
 async def get_all_permissions(request: Request):
     user = getattr(request.state, "user", None)
     if not user:
@@ -72,8 +68,7 @@ async def get_all_permissions(request: Request):
 @router.get(
     "/{role_id}/permissions/{permission_name}",
     status_code=status.HTTP_200_OK,
-    description="Add a permission to the given role.",
-    dependencies=[Depends(require_permissions(["role.assign_permission", "role.admin", "all"]))],
+    description="Add a permission to the given role."
 )
 async def add_permission_to_role(role_id: int, permission_name: str, request: Request):
     user = getattr(request.state, "user", None)
@@ -96,8 +91,7 @@ async def add_permission_to_role(role_id: int, permission_name: str, request: Re
 @router.get(
     "/{org_id}/permissions",
     status_code=status.HTTP_200_OK,
-    description="Get all roles with their permissions for the given organization.",
-    dependencies=[Depends(require_permissions(["role.view_permissions", "role.admin", "all"]))],
+    description="Get all roles with their permissions for the given organization."
 )
 async def get_all_role_permissions(org_id: int, request: Request):
     user = getattr(request.state, "user", None)

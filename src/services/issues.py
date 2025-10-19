@@ -273,13 +273,9 @@ class IssuesService:
             # Update the issue status
             await self.issue_repo.update_issue(issue_id, status=status_data.status)
 
+
             # Fetch the updated issue
             updated_issue = await self.issue_repo.get_issue_by_id(issue_id)
-
-
-
-
-
 
             return IssueResponse(**updated_issue)
 

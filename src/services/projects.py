@@ -1,8 +1,10 @@
 from src.repositories.projects import ProjectsRepository
+from src.repositories.organizations import OrganizationsRepository
 
 class ProjectsService:
     def __init__(self):
         self.projectsRepo = ProjectsRepository()
+        self.organizationsRepo = OrganizationsRepository()
 
     async def create_project(self, workspace_id: int, name: str, user_id: int, status: str = 'active'):
         """Create a new project"""
@@ -70,6 +72,20 @@ class ProjectsService:
             return updated_project
         except Exception as e:
             print(f"Failed to update project status: {e}")
+            raise
+
+    async def get_organization_projects(self, organization_id: int, user_id: int):
+        """Get all projects in an organization (requires org membership)."""
+        # Access check: user must belong to the organization
+        has_access = await self.organizationsRepo.user_has_org_access(user_id, organization_id)
+        if not has_access:
+            raise Exception("Access denied to organization")
+
+        try:
+            projects = await self.projectsRepo.get_organization_projects(organization_id)
+            return projects
+        except Exception as e:
+            print(f"Failed to get organization projects: {e}")
             raise
 
     async def assign_team_to_project(self, project_id: int, team_id: int, user_id: int):

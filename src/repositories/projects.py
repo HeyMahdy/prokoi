@@ -54,6 +54,28 @@ class ProjectsRepository:
         rows = await db.execute_query(query, (project_id,))
         return rows[0] if rows else None
 
+    async def get_organization_projects(self, organization_id: int) -> list[dict]:
+        """Get all projects that belong to an organization (via workspaces)."""
+        query = """
+        SELECT p.id,
+               p.name,
+               p.workspace_id,
+               p.created_by,
+               p.status,
+               p.created_at,
+               p.updated_at,
+               u.name  AS creator_name,
+               u.email AS creator_email,
+               w.name  AS workspace_name,
+               w.organization_id
+        FROM projects p
+                 JOIN users u ON p.created_by = u.id
+                 JOIN workspaces w ON p.workspace_id = w.id
+        WHERE w.organization_id = %s
+        ORDER BY p.created_at DESC
+        """
+        return await db.execute_query(query, (organization_id,))
+
     async def user_has_workspace_access(self, user_id: int, workspace_id: int) -> bool:
         """Check if user has access to workspace (through organization)"""
         query = """

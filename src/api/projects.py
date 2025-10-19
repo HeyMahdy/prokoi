@@ -49,6 +49,22 @@ async def list_workspace_projects(workspace_id: int, request: Request):
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get workspace projects")
 
+@router.get("/organizations/{organization_id}/projects")
+async def list_organization_projects(organization_id: int, request: Request):
+    """List all projects in an organization"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        projects = await projectsService.get_organization_projects(organization_id, user["id"])
+        return projects
+    except Exception as e:
+        if "Access denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get organization projects")
+
 @router.put("/projects/{project_id}/decision")
 async def update_project_status(project_id: int, decision: str, request: Request):
     """Update project status"""

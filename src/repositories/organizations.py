@@ -9,19 +9,13 @@ class OrganizationsRepository:
             
             await conn.autocommit(False)
             await conn.begin()
-
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute("INSERT INTO organizations (name) VALUES (%s)", (name,))
                 org_id = cur.lastrowid
-                print("this is org id ",org_id)
-
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute("INSERT INTO roles (name, organization_id) VALUES (%s, %s)", ("admin", org_id))
                 role_id = cur.lastrowid
                 print("this is role id ",role_id)
-
-
-
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute("INSERT INTO user_role (user_id,role_id) VALUES (%s, %s)", (user_id, role_id))
                 user_role_id = cur.lastrowid
@@ -30,10 +24,8 @@ class OrganizationsRepository:
                 await cur.execute("INSERT INTO organization_users (user_id,organization_id) VALUES (%s, %s)", (user_id, org_id))
                 organization_users_id = cur.lastrowid
                 print("this is muck id ", organization_users_id)
-
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute("INSERT INTO role_permissions (role_id,permission_id) VALUES (%s, %s)", (role_id, 1))
-
             await conn.commit()
             return org_id
         except Exception:
