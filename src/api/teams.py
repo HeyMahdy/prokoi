@@ -3,6 +3,7 @@ from src.services.teams import TeamsService
 from src.services.velocity import VelocityService
 from src.schemas.velocity import VelocityUpdate, VelocityResponse, TeamVelocityHistory
 from fastapi.security import HTTPBearer
+from src.dependencies.permission import require_permissions
 
 bearer = HTTPBearer()
 router = APIRouter(prefix="/api", tags=["Teams"], dependencies=[Depends(bearer)])
@@ -10,7 +11,7 @@ router = APIRouter(prefix="/api", tags=["Teams"], dependencies=[Depends(bearer)]
 teamservice = TeamsService()
 velocityService = VelocityService()
 
-@router.post("/organizations/{org_id}/teams", status_code=status.HTTP_201_CREATED)
+@router.post("/organizations/{org_id}/teams", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permissions(["all", "create_team"]))])
 async def create_team(org_id: int, name: str, request: Request):
     """Create team in organization"""
     user = getattr(request.state, "user", None)
@@ -25,7 +26,7 @@ async def create_team(org_id: int, name: str, request: Request):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create team")
 
-@router.get("/organizations/{org_id}/teams")
+@router.get("/organizations/{org_id}/teams", dependencies=[Depends(require_permissions(["all", "view_team"]))])
 async def list_organization_teams(org_id: int, request: Request):
     """List all teams in organization"""
     user = getattr(request.state, "user", None)
@@ -38,7 +39,7 @@ async def list_organization_teams(org_id: int, request: Request):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get teams")
 
-@router.get("/teams/{team_id}")
+@router.get("/teams/{team_id}", dependencies=[Depends(require_permissions(["all", "view_team"]))])
 async def get_team(team_id: int, request: Request):
     """Get team details"""
     user = getattr(request.state, "user", None)
@@ -51,7 +52,7 @@ async def get_team(team_id: int, request: Request):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Team not found")
 
-@router.put("/teams/{team_id}")
+@router.put("/teams/{team_id}", dependencies=[Depends(require_permissions(["all", "edit_team"]))])
 async def update_team(team_id: int, name: str, request: Request):
     """Update team"""
     user = getattr(request.state, "user", None)
@@ -66,7 +67,7 @@ async def update_team(team_id: int, name: str, request: Request):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update team")
 
-@router.delete("/teams/{team_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/teams/{team_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_permissions(["all", "delete_team"]))])
 async def delete_team(team_id: int, request: Request):
     """Delete team"""
     user = getattr(request.state, "user", None)
@@ -79,7 +80,7 @@ async def delete_team(team_id: int, request: Request):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete team")
 
-@router.get("/teams/{team_id}/velocity", response_model=list[TeamVelocityHistory])
+@router.get("/teams/{team_id}/velocity", response_model=list[TeamVelocityHistory], dependencies=[Depends(require_permissions(["all", "view_team_velocity"]))])
 async def get_team_velocity_history(team_id: int, request: Request):
     """Get team velocity history across all projects"""
     user = getattr(request.state, "user", None)
@@ -95,7 +96,7 @@ async def get_team_velocity_history(team_id: int, request: Request):
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get team velocity history")
 
-@router.put("/teams/{team_id}/velocity", response_model=VelocityResponse)
+@router.put("/teams/{team_id}/velocity", response_model=VelocityResponse, dependencies=[Depends(require_permissions(["all", "edit_team_velocity"]))])
 async def update_team_velocity(team_id: int, velocity_data: VelocityUpdate, request: Request):
     """Update team velocity"""
     user = getattr(request.state, "user", None)

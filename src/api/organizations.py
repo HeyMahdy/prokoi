@@ -6,13 +6,14 @@ from typing import Any
 from src.services.orginizations import OrginizationsService
 from src.schemas.organizations import OrganizationResponse
 from fastapi.security import HTTPBearer
+from src.dependencies.permission import require_permissions
 
 bearer = HTTPBearer()
 router = APIRouter(prefix="/api/organizations", tags=["Organizations"],dependencies=[Depends(bearer)])
 
 orgservice = OrginizationsService()
 
-@router.post("/create", status_code=status.HTTP_201_CREATED)
+@router.post("/create", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permissions(["all", "create_organization"]))])
 async def create_org(name: str, request: Request):
     user = getattr(request.state, "user", None)
     if not user:
@@ -89,7 +90,7 @@ async def accept_invitation(invitation_id: int, request: Request):
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to accept invitation")
 
 
-@router.get("/{org_id}/users")
+@router.get("/{org_id}/users", dependencies=[Depends(require_permissions(["all", "view_organization_users"]))])
 async def get_organization_users(org_id: int, request: Request):
     """Get all users in organization"""
     user = getattr(request.state, "user", None)

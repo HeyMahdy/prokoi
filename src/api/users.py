@@ -4,6 +4,7 @@ from src.schemas.auth import Token
 from src.schemas.users import *
 from src.services.auth import AuthService
 from src.services.users import UsersService
+from src.dependencies.permission import require_permissions
 
 
 router = APIRouter(

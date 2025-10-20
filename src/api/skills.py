@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, status, Depends
 from src.services.skills import SkillsService
 from src.schemas.skills import SkillResponse, UserSkillCreate, UserSkillUpdate, UserSkillResponse, UserSkillsListResponse
 from fastapi.security import HTTPBearer
+from src.dependencies.permission import require_permissions
 
 bearer = HTTPBearer()
 router = APIRouter(prefix="/api", tags=["Skills"], dependencies=[Depends(bearer)])

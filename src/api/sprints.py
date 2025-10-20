@@ -3,13 +3,14 @@ from src.services.sprints import SprintsService
 from src.schemas.sprints import SprintCreate, SprintUpdate, SprintResponse
 from src.schemas.sprint_planning import IssueAddToSprint, SprintIssueResponse, SprintBacklogReorder
 from fastapi.security import HTTPBearer
+from src.dependencies.permission import require_permissions
 
 bearer = HTTPBearer()
 router = APIRouter(prefix="/api", tags=["Sprints"], dependencies=[Depends(bearer)])
 
 sprintsService = SprintsService()
 
-@router.post("/projects/{project_id}/sprints", response_model=SprintResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/projects/{project_id}/sprints", response_model=SprintResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permissions(["all", "create_sprint"]))])
 async def create_sprint(project_id: int, sprint_data: SprintCreate, request: Request):
     """Create sprint in project"""
     user = getattr(request.state, "user", None)
@@ -27,7 +28,7 @@ async def create_sprint(project_id: int, sprint_data: SprintCreate, request: Req
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create sprint")
 
-@router.get("/projects/{project_id}/sprints", response_model=list[SprintResponse])
+@router.get("/projects/{project_id}/sprints", response_model=list[SprintResponse], dependencies=[Depends(require_permissions(["all", "view_sprint"]))])
 async def list_project_sprints(project_id: int, request: Request):
     """List all sprints in project"""
     user = getattr(request.state, "user", None)
@@ -43,7 +44,7 @@ async def list_project_sprints(project_id: int, request: Request):
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get project sprints")
 
-@router.get("/sprints/{sprint_id}", response_model=SprintResponse)
+@router.get("/sprints/{sprint_id}", response_model=SprintResponse, dependencies=[Depends(require_permissions(["all", "view_sprint"]))])
 async def get_sprint_details(sprint_id: int, request: Request):
     """Get sprint details"""
     user = getattr(request.state, "user", None)
@@ -61,7 +62,7 @@ async def get_sprint_details(sprint_id: int, request: Request):
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get sprint details")
 
-@router.put("/sprints/{sprint_id}", response_model=SprintResponse)
+@router.put("/sprints/{sprint_id}", response_model=SprintResponse, dependencies=[Depends(require_permissions(["all", "edit_sprint"]))])
 async def update_sprint(sprint_id: int, sprint_data: SprintUpdate, request: Request):
     """Update sprint"""
     user = getattr(request.state, "user", None)
@@ -81,7 +82,7 @@ async def update_sprint(sprint_id: int, sprint_data: SprintUpdate, request: Requ
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update sprint")
 
-@router.delete("/sprints/{sprint_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/sprints/{sprint_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_permissions(["all", "delete_sprint"]))])
 async def delete_sprint(sprint_id: int, request: Request):
     """Delete sprint"""
     user = getattr(request.state, "user", None)
@@ -99,7 +100,7 @@ async def delete_sprint(sprint_id: int, request: Request):
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete sprint")
 
-@router.post("/sprints/{sprint_id}/start", response_model=SprintResponse)
+@router.post("/sprints/{sprint_id}/start", response_model=SprintResponse, dependencies=[Depends(require_permissions(["all", "start_sprint"]))])
 async def start_sprint(sprint_id: int, request: Request):
     """Start sprint"""
     user = getattr(request.state, "user", None)
@@ -119,7 +120,7 @@ async def start_sprint(sprint_id: int, request: Request):
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to start sprint")
 
-@router.post("/sprints/{sprint_id}/complete", response_model=SprintResponse)
+@router.post("/sprints/{sprint_id}/complete", response_model=SprintResponse, dependencies=[Depends(require_permissions(["all", "complete_sprint"]))])
 async def complete_sprint(sprint_id: int, request: Request):
     """Complete sprint"""
     user = getattr(request.state, "user", None)
@@ -139,7 +140,7 @@ async def complete_sprint(sprint_id: int, request: Request):
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to complete sprint")
 
-@router.post("/sprints/{sprint_id}/cancel", response_model=SprintResponse)
+@router.post("/sprints/{sprint_id}/cancel", response_model=SprintResponse, dependencies=[Depends(require_permissions(["all", "cancel_sprint"]))])
 async def cancel_sprint(sprint_id: int, request: Request):
     """Cancel sprint"""
     user = getattr(request.state, "user", None)
@@ -159,7 +160,7 @@ async def cancel_sprint(sprint_id: int, request: Request):
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to cancel sprint")
 
-@router.post("/sprints/{sprint_id}/issues")
+@router.post("/sprints/{sprint_id}/issues", dependencies=[Depends(require_permissions(["all", "add_issue_to_sprint"]))])
 async def add_issues_to_sprint(sprint_id: int, issue_data: IssueAddToSprint, request: Request):
     """Add issues to sprint"""
     user = getattr(request.state, "user", None)
@@ -179,7 +180,7 @@ async def add_issues_to_sprint(sprint_id: int, issue_data: IssueAddToSprint, req
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to add issues to sprint")
 
-@router.delete("/sprints/{sprint_id}/issues/{issue_id}")
+@router.delete("/sprints/{sprint_id}/issues/{issue_id}", dependencies=[Depends(require_permissions(["all", "remove_issue_from_sprint"]))])
 async def remove_issue_from_sprint(sprint_id: int, issue_id: int, request: Request):
     """Remove issue from sprint"""
     user = getattr(request.state, "user", None)
@@ -199,7 +200,7 @@ async def remove_issue_from_sprint(sprint_id: int, issue_id: int, request: Reque
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to remove issue from sprint")
 
-@router.get("/sprints/{sprint_id}/issues", response_model=list[SprintIssueResponse])
+@router.get("/sprints/{sprint_id}/issues", response_model=list[SprintIssueResponse], dependencies=[Depends(require_permissions(["all", "view_sprint_issues"]))])
 async def get_sprint_issues(sprint_id: int, request: Request):
     """List sprint issues"""
     user = getattr(request.state, "user", None)
@@ -217,7 +218,7 @@ async def get_sprint_issues(sprint_id: int, request: Request):
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get sprint issues")
 
-@router.put("/sprints/{sprint_id}/issues/reorder")
+@router.put("/sprints/{sprint_id}/issues/reorder", dependencies=[Depends(require_permissions(["all", "reorder_sprint_backlog"]))])
 async def reorder_sprint_backlog(sprint_id: int, reorder_data: SprintBacklogReorder, request: Request):
     """Reorder sprint backlog"""
     user = getattr(request.state, "user", None)

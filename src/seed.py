@@ -48,7 +48,8 @@ def clear_existing_data(cursor):
         'user_workload', 'issue_assignments', 'issue_sprints', 'time_logs',
         'issue_history', 'issue_labels', 'checklist_items', 'checklists',
         'attachments', 'issue_comments', 'issues', 'sprints', 'projects',
-        'workspaces', 'user_team', 'teams', 'organization_users', 'users',
+        'workspaces', 'user_team', 'teams', 'user_role', 'role_permissions',
+        'roles', 'permissions', 'organization_users', 'users',
         'organizations', 'issue_types'
     ]
     
@@ -177,6 +178,170 @@ def seed_teams(cursor, org_ids):
     
     print(f"Created {len(team_ids)} teams")
     return team_ids, team_org_map
+
+def seed_permissions(cursor):
+    """Seed all permissions"""
+    print("Seeding permissions...")
+    
+    permissions = [
+        'all', 'accept_organization_invitation', 'add_issue_to_sprint', 'add_skill_to_issue',
+        'add_team_member', 'assign_issue', 'assign_label_to_issue', 'assign_permission_to_role',
+        'assign_team_to_project', 'assign_team_to_workspace', 'cancel_sprint', 'complete_sprint',
+        'create_issue', 'create_issue_type', 'create_label', 'create_organization',
+        'create_project', 'create_role', 'create_sprint', 'create_team', 'create_user',
+        'create_user_skill', 'create_workspace', 'delete_issue', 'delete_issue_type',
+        'delete_label', 'delete_organization', 'delete_project', 'delete_role',
+        'delete_sprint', 'delete_team', 'delete_user', 'delete_user_skill',
+        'delete_workspace', 'edit_issue', 'edit_issue_skill_requirement', 'edit_issue_type',
+        'edit_label', 'edit_organization', 'edit_project', 'edit_role', 'edit_sprint',
+        'edit_team', 'edit_team_velocity', 'edit_user', 'edit_user_skill', 'edit_user_skills',
+        'edit_workspace', 'invite_user_to_organization', 'login_user', 'manage_organization_requests',
+        'manage_user_roles', 'remove_issue_from_sprint', 'remove_label_from_issue',
+        'remove_skill_from_issue', 'remove_team_member', 'reorder_sprint_backlog',
+        'start_sprint', 'unassign_issue', 'update_issue_priority', 'update_issue_status',
+        'update_project_status', 'view_assigned_issues', 'view_issue', 'view_issues_by_label',
+        'view_issue_by_priority', 'view_issue_by_status', 'view_issue_skill_match',
+        'view_issue_type', 'view_label', 'view_organization', 'view_organization_users',
+        'view_permissions', 'view_project', 'view_project_analysis', 'view_project_analysis_depth',
+        'view_project_teams', 'view_project_users', 'view_role', 'view_skill',
+        'view_sprint', 'view_sprint_issues', 'view_sprint_velocity', 'view_sprint_velocity_analysis',
+        'view_sub_issues', 'view_team', 'view_team_members', 'view_team_performance',
+        'view_team_velocity', 'view_user', 'view_user_performance', 'view_user_skills',
+        'view_workspace', 'view_workspace_teams'
+    ]
+    
+    permission_map = {}
+    for permission in permissions:
+        cursor.execute(
+            """INSERT IGNORE INTO permissions (name) VALUES (%s)""",
+            (permission,)
+        )
+        if cursor.lastrowid:
+            permission_map[permission] = cursor.lastrowid
+        else:
+            # Get existing permission ID
+            cursor.execute("SELECT id FROM permissions WHERE name = %s", (permission,))
+            result = cursor.fetchone()
+            if result:
+                permission_map[permission] = result[0]
+    
+    print(f"Seeded {len(permission_map)} permissions")
+    return permission_map
+
+def seed_roles(cursor, org_ids, permission_map):
+    """Seed roles for each organization"""
+    print("Seeding roles...")
+    role_map = {}
+    
+    # Define role templates
+    role_templates = {
+        'admin': {
+            'permissions': ['all'],  # Admin gets all permissions
+            'description': 'Full system administrator with all permissions'
+        },
+        'project_manager': {
+            'permissions': [
+                'view_project', 'create_project', 'edit_project', 'delete_project',
+                'view_issue', 'create_issue', 'edit_issue', 'delete_issue',
+                'view_sprint', 'create_sprint', 'edit_sprint', 'delete_sprint',
+                'start_sprint', 'complete_sprint', 'cancel_sprint',
+                'add_issue_to_sprint', 'remove_issue_from_sprint', 'reorder_sprint_backlog',
+                'assign_issue', 'unassign_issue', 'update_issue_status', 'update_issue_priority',
+                'view_team', 'view_team_members', 'view_team_performance',
+                'view_workspace', 'view_organization', 'view_organization_users',
+                'view_user', 'view_user_performance', 'view_assigned_issues'
+            ],
+            'description': 'Project manager with full project and team management permissions'
+        },
+        'developer': {
+            'permissions': [
+                'view_project', 'view_issue', 'create_issue', 'edit_issue',
+                'view_sprint', 'view_sprint_issues', 'view_assigned_issues',
+                'update_issue_status', 'update_issue_priority',
+                'view_team', 'view_team_members', 'view_team_velocity',
+                'view_workspace', 'view_user_skills', 'create_user_skill',
+                'edit_user_skill', 'delete_user_skill', 'edit_user_skills'
+            ],
+            'description': 'Developer with issue and sprint management permissions'
+        },
+        'tester': {
+            'permissions': [
+                'view_project', 'view_issue', 'create_issue', 'edit_issue',
+                'view_sprint', 'view_sprint_issues', 'view_assigned_issues',
+                'update_issue_status', 'view_team', 'view_team_members',
+                'view_workspace', 'view_user_skills'
+            ],
+            'description': 'Tester with issue viewing and updating permissions'
+        },
+        'viewer': {
+            'permissions': [
+                'view_project', 'view_issue', 'view_sprint', 'view_sprint_issues',
+                'view_team', 'view_team_members', 'view_workspace', 'view_organization',
+                'view_user', 'view_user_skills'
+            ],
+            'description': 'Read-only access to projects and issues'
+        }
+    }
+    
+    for org_id in org_ids:
+        for role_name, role_data in role_templates.items():
+            # Make role name unique by including organization ID
+            unique_role_name = f"{role_name}_{org_id}"
+            cursor.execute(
+                """INSERT INTO roles (name, organization_id) VALUES (%s, %s)""",
+                (unique_role_name, org_id)
+            )
+            role_id = cursor.lastrowid
+            role_map[f"{org_id}_{role_name}"] = role_id
+            
+            # Assign permissions to role
+            for permission_name in role_data['permissions']:
+                if permission_name in permission_map:
+                    cursor.execute(
+                        """INSERT IGNORE INTO role_permissions (role_id, permission_id) 
+                           VALUES (%s, %s)""",
+                        (role_id, permission_map[permission_name])
+                    )
+    
+    print(f"Created {len(role_map)} roles across {len(org_ids)} organizations")
+    return role_map
+
+def assign_user_roles(cursor, user_ids, main_user_id, org_ids, role_map):
+    """Assign roles to users"""
+    print("Assigning roles to users...")
+    
+    # Main user gets admin role in all organizations
+    for org_id in org_ids:
+        admin_role_key = f"{org_id}_admin"
+        if admin_role_key in role_map:
+            cursor.execute(
+                """INSERT IGNORE INTO user_role (user_id, role_id) VALUES (%s, %s)""",
+                (main_user_id, role_map[admin_role_key])
+            )
+    
+    # Other users get random roles
+    other_users = [uid for uid in user_ids if uid != main_user_id]
+    role_types = ['project_manager', 'developer', 'tester', 'viewer']
+    
+    for user_id in other_users:
+        # Get organizations this user belongs to
+        cursor.execute(
+            """SELECT organization_id FROM organization_users WHERE user_id = %s""",
+            (user_id,)
+        )
+        user_orgs = [row[0] for row in cursor.fetchall()]
+        
+        for org_id in user_orgs:
+            # Assign random role
+            role_type = random.choice(role_types)
+            role_key = f"{org_id}_{role_type}"
+            if role_key in role_map:
+                cursor.execute(
+                    """INSERT IGNORE INTO user_role (user_id, role_id) VALUES (%s, %s)""",
+                    (user_id, role_map[role_key])
+                )
+    
+    print("Assigned roles to all users")
 
 def seed_user_team(cursor, team_ids, user_ids, team_org_map):
     """Assign users to teams"""
@@ -528,6 +693,11 @@ def main():
         # Assign other users to organizations
         seed_organization_users(cursor, org_ids, user_ids, main_user_id)
         
+        # Seed permissions and roles
+        permission_map = seed_permissions(cursor)
+        role_map = seed_roles(cursor, org_ids, permission_map)
+        assign_user_roles(cursor, user_ids, main_user_id, org_ids, role_map)
+        
         team_ids, team_org_map = seed_teams(cursor, org_ids)
         seed_user_team(cursor, team_ids, user_ids, team_org_map)
         
@@ -553,23 +723,29 @@ def main():
         
         # Show main user first
         main_cred = next(cred for cred in user_credentials if cred.get('role') == 'main_owner')
-        print("🏢 MAIN ACCOUNT (Owns all organizations):")
+        print("🏢 MAIN ACCOUNT (Admin with 'all' permission):")
         print(f"   Email: {main_cred['email']}")
         print(f"   Password: {main_cred['password']}")
+        print(f"   Role: Admin (has 'all' permission)")
         print()
         
         # Show other users
         other_creds = [cred for cred in user_credentials if cred.get('role') == 'member']
-        print("👥 TEAM MEMBERS (Assigned to organizations):")
+        print("👥 TEAM MEMBERS (Various roles assigned):")
         for i, cred in enumerate(other_creds, 1):
             print(f"{i:2d}. Email: {cred['email']}")
             print(f"    Password: {cred['password']}")
+            print(f"    Role: Randomly assigned (project_manager, developer, tester, or viewer)")
         print("=" * 60)
         
         # Print summary
         print(f"\n📊 SEEDING SUMMARY:")
         print(f"   • Organizations: {len(org_ids)} (all owned by main user)")
         print(f"   • Users: {len(user_ids)} (1 main owner + {len(user_ids)-1} members)")
+        print(f"   • Permissions: {len(permission_map)} (including 'all' permission)")
+        print(f"   • Roles: {len(role_map)} (admin, project_manager, developer, tester, viewer)")
+        print(f"   • Main user has 'all' permission in all organizations")
+        print(f"   • Other users have randomly assigned roles with specific permissions")
         print(f"   • Teams: {len(team_ids)}")
         print(f"   • Workspaces: {len(workspace_ids)}")
         print(f"   • Projects: {len(project_ids)}")

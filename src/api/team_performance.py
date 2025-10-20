@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, status, Depends
 from fastapi.security import HTTPBearer
+
+from src.dependencies.permission import require_permissions
 from src.services.team_performance import TeamPerformanceService
 from src.schemas.team_performance import TeamPerformanceResponse
 from typing import List
@@ -9,7 +11,8 @@ router = APIRouter(prefix="/api", tags=["Team Performance"], dependencies=[Depen
 
 team_performance_service = TeamPerformanceService()
 
-@router.get("/teams/performance", response_model=List[TeamPerformanceResponse], status_code=status.HTTP_200_OK)
+@router.get("/teams/performance", response_model=List[TeamPerformanceResponse], status_code=status.HTTP_200_OK,
+            dependencies=[Depends(require_permissions(["all"]))])
 async def get_team_performance_metrics(request: Request):
     """Get team performance and collaboration metrics for all teams"""
     user = getattr(request.state, "user", None)

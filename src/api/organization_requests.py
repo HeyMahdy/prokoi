@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, status, Depends
 from src.services.organization_requests import OrganizationRequestsService
 from fastapi.security import HTTPBearer
+from src.dependencies.permission import require_permissions
 
 bearer = HTTPBearer()
 router = APIRouter(prefix="/api", tags=["Organization Requests"], dependencies=[Depends(bearer)])

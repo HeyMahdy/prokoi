@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, status, Depends
 from fastapi.security import HTTPBearer
+
+from src.dependencies.permission import require_permissions
 from src.services.project_analysis import ProjectAnalysisService
 from src.schemas.project_analysis import ProjectAnalysisDepthResponse
 
@@ -8,7 +10,9 @@ router = APIRouter(prefix="/api", tags=["Project Analysis"], dependencies=[Depen
 
 project_analysis_service = ProjectAnalysisService()
 
-@router.get("/projects/{project_id}/analysis/depth", response_model=ProjectAnalysisDepthResponse, status_code=status.HTTP_200_OK)
+@router.get("/projects/{project_id}/analysis/depth", response_model=ProjectAnalysisDepthResponse, status_code=status.HTTP_200_OK,
+            dependencies=[Depends(require_permissions(["all"]))]
+            )
 async def get_project_analysis_depth(project_id: int, request: Request):
     """Get detailed project analysis with comprehensive depth metrics"""
     user = getattr(request.state, "user", None)

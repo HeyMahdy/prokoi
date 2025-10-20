@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, status, Depends
 from fastapi.security import HTTPBearer
+
+from src.dependencies.permission import require_permissions
 from src.services.user_performance import UserPerformanceService
 from src.schemas.user_performance import UserPerformanceResponse
 from typing import List
@@ -9,7 +11,7 @@ router = APIRouter(prefix="/api", tags=["User Performance"], dependencies=[Depen
 
 user_performance_service = UserPerformanceService()
 
-@router.get("/users/performance")
+@router.get("/users/performance",dependencies=[Depends(require_permissions(["all"]))])
 async def get_user_performance(request: Request):
     """Get user performance and workload analysis for all users"""
     user = getattr(request.state, "user", None)

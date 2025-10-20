@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, status, Depends, Query
 from fastapi.security import HTTPBearer
 from src.services.issues import IssuesService
 from src.schemas.issues import IssueCreate, IssueUpdate, IssueResponse, IssueAssignmentCreate, IssueAssignmentResponse, IssueStatusUpdate
+from src.dependencies.permission import require_permissions
 from typing import List, Optional
 
 bearer = HTTPBearer()
@@ -10,7 +11,7 @@ router = APIRouter(prefix="/api", tags=["Issues"], dependencies=[Depends(bearer)
 issues_service = IssuesService()
 
 
-@router.post("/projects/{project_id}/issues", response_model=IssueResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/projects/{project_id}/issues", response_model=IssueResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permissions(["all", "create_issue"]))])
 async def create_issue(project_id: int, issue_data: IssueCreate, request: Request):
     """Create a new issue in a project"""
     user = getattr(request.state, "user", None)
@@ -29,7 +30,7 @@ async def create_issue(project_id: int, issue_data: IssueCreate, request: Reques
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create issue")
 
 
-@router.get("/projects/{project_id}/issues", response_model=List[IssueResponse], status_code=status.HTTP_200_OK)
+@router.get("/projects/{project_id}/issues", response_model=List[IssueResponse], status_code=status.HTTP_200_OK, dependencies=[Depends(require_permissions(["all", "view_issue"]))])
 async def get_project_issues(
     project_id: int, 
     request: Request,
@@ -57,7 +58,7 @@ async def get_project_issues(
         raise HTTPException(status_code=404, detail="Failed to fetch issues")
 
 
-@router.get("/issues/{issue_id}", response_model=IssueResponse, status_code=status.HTTP_200_OK)
+@router.get("/issues/{issue_id}", response_model=IssueResponse, status_code=status.HTTP_200_OK, dependencies=[Depends(require_permissions(["all", "view_issue"]))])
 async def get_issue(issue_id: int, request: Request):
     """Get a specific issue by ID"""
     user = getattr(request.state, "user", None)
@@ -75,7 +76,7 @@ async def get_issue(issue_id: int, request: Request):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch issue")
 
 
-@router.put("/issues/{issue_id}", response_model=IssueResponse, status_code=status.HTTP_200_OK)
+@router.put("/issues/{issue_id}", response_model=IssueResponse, status_code=status.HTTP_200_OK, dependencies=[Depends(require_permissions(["all", "edit_issue"]))])
 async def update_issue(issue_id: int, issue_data: IssueUpdate, request: Request):
     """Update an existing issue"""
     user = getattr(request.state, "user", None)
@@ -94,7 +95,7 @@ async def update_issue(issue_id: int, issue_data: IssueUpdate, request: Request)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update issue")
 
 
-@router.delete("/issues/{issue_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/issues/{issue_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_permissions(["all", "delete_issue"]))])
 async def delete_issue(issue_id: int, request: Request):
     """Delete an issue"""
     user = getattr(request.state, "user", None)
@@ -110,7 +111,7 @@ async def delete_issue(issue_id: int, request: Request):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete issue")
 
 
-@router.get("/projects/{project_id}/issues/status/{status}", response_model=List[IssueResponse], status_code=status.HTTP_200_OK)
+@router.get("/projects/{project_id}/issues/status/{status}", response_model=List[IssueResponse], status_code=status.HTTP_200_OK, dependencies=[Depends(require_permissions(["all", "view_issue_by_status"]))])
 async def get_issues_by_status(project_id: int, Status: str, request: Request):
     """Get all issues with a specific status for a project"""
     user = getattr(request.state, "user", None)
@@ -124,7 +125,7 @@ async def get_issues_by_status(project_id: int, Status: str, request: Request):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch issues by status")
 
 
-@router.get("/projects/{project_id}/issues/priority/{priority}", response_model=List[IssueResponse], status_code=status.HTTP_200_OK)
+@router.get("/projects/{project_id}/issues/priority/{priority}", response_model=List[IssueResponse], status_code=status.HTTP_200_OK, dependencies=[Depends(require_permissions(["all", "view_issue_by_priority"]))])
 async def get_issues_by_priority(project_id: int, priority: str, request: Request):
     """Get all issues with a specific priority for a project"""
     user = getattr(request.state, "user", None)
@@ -138,7 +139,7 @@ async def get_issues_by_priority(project_id: int, priority: str, request: Reques
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch issues by priority")
 
 
-@router.get("/issues/{parent_issue_id}/sub-issues", response_model=List[IssueResponse], status_code=status.HTTP_200_OK)
+@router.get("/issues/{parent_issue_id}/sub-issues", response_model=List[IssueResponse], status_code=status.HTTP_200_OK, dependencies=[Depends(require_permissions(["all", "view_sub_issues"]))])
 async def get_sub_issues(parent_issue_id: int, request: Request):
     """Get all sub-issues (children) of a parent issue"""
     user = getattr(request.state, "user", None)
@@ -155,7 +156,7 @@ async def get_sub_issues(parent_issue_id: int, request: Request):
 
 
 # Additional utility endpoints
-@router.patch("/issues/{issue_id}/status", response_model=IssueResponse, status_code=status.HTTP_200_OK)
+@router.patch("/issues/{issue_id}/status", response_model=IssueResponse, status_code=status.HTTP_200_OK, dependencies=[Depends(require_permissions(["all", "update_issue_status"]))])
 async def update_issue_status_patch(issue_id: int, status_data: IssueStatusUpdate, request: Request):
     """Update only the status of an issue"""
     user = getattr(request.state, "user", None)
@@ -174,7 +175,7 @@ async def update_issue_status_patch(issue_id: int, status_data: IssueStatusUpdat
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update issue status")
 
 
-@router.patch("/issues/{issue_id}/priority", response_model=IssueResponse, status_code=status.HTTP_200_OK)
+@router.patch("/issues/{issue_id}/priority", response_model=IssueResponse, status_code=status.HTTP_200_OK, dependencies=[Depends(require_permissions(["all", "update_issue_priority"]))])
 async def update_issue_priority(issue_id: int, priority: str, request: Request):
     """Update only the priority of an issue"""
     user = getattr(request.state, "user", None)
@@ -195,7 +196,7 @@ async def update_issue_priority(issue_id: int, priority: str, request: Request):
 
 
 # Issue Assignment endpoints
-@router.post("/issues/{issue_id}/assign", response_model=IssueAssignmentResponse, status_code=status.HTTP_200_OK)
+@router.post("/issues/{issue_id}/assign", response_model=IssueAssignmentResponse, status_code=status.HTTP_200_OK, dependencies=[Depends(require_permissions(["all", "assign_issue"]))])
 async def assign_issue(issue_id: int, assignment_data: IssueAssignmentCreate, request: Request):
     """Assign an issue to a user"""
     user = getattr(request.state, "user", None)
@@ -214,7 +215,7 @@ async def assign_issue(issue_id: int, assignment_data: IssueAssignmentCreate, re
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to assign issue")
 
 
-@router.post("/issues/{issue_id}/unassign", status_code=status.HTTP_200_OK)
+@router.post("/issues/{issue_id}/unassign", status_code=status.HTTP_200_OK, dependencies=[Depends(require_permissions(["all", "unassign_issue"]))])
 async def unassign_issue(issue_id: int, request: Request):
     """Unassign an issue"""
     user = getattr(request.state, "user", None)
@@ -233,7 +234,7 @@ async def unassign_issue(issue_id: int, request: Request):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to unassign issue")
 
 
-@router.put("/issues/{issue_id}/status", response_model=IssueResponse, status_code=status.HTTP_200_OK)
+@router.put("/issues/{issue_id}/status", response_model=IssueResponse, status_code=status.HTTP_200_OK, dependencies=[Depends(require_permissions(["all", "update_issue_status"]))])
 async def update_issue_status(issue_id: int, status_data: IssueStatusUpdate, request: Request):
     """Update issue status"""
     user = getattr(request.state, "user", None)
@@ -252,7 +253,7 @@ async def update_issue_status(issue_id: int, status_data: IssueStatusUpdate, req
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update issue status")
 
 
-@router.get("/issues/{issue_id}/assignment", response_model=IssueAssignmentResponse, status_code=status.HTTP_200_OK)
+@router.get("/issues/{issue_id}/assignment", response_model=IssueAssignmentResponse, status_code=status.HTTP_200_OK, dependencies=[Depends(require_permissions(["all", "view_issue"]))])
 async def get_issue_assignment(issue_id: int, request: Request):
     """Get assignment details for an issue"""
     user = getattr(request.state, "user", None)
@@ -270,7 +271,7 @@ async def get_issue_assignment(issue_id: int, request: Request):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch assignment")
 
 
-@router.get("/users/assigned-issues", response_model=List[IssueResponse], status_code=status.HTTP_200_OK)
+@router.get("/users/assigned-issues", response_model=List[IssueResponse], status_code=status.HTTP_200_OK, dependencies=[Depends(require_permissions(["all", "view_assigned_issues"]))])
 async def get_user_assigned_issues(
     request: Request,
     project_id: Optional[int] = Query(None, description="Filter by project ID")

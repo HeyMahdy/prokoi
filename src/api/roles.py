@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/roles", tags=["roles"],dependencies=[Depends(bea
     "/create",
     status_code=status.HTTP_201_CREATED,
     description="Create a new role for the given organization. Requires `org_id` and `name` of the role."
-)
+, dependencies=[Depends(require_permissions(["all", "create_role"]))])
 async def create_role(org_id: int, name: str, request: Request):
     user = getattr(request.state, "user", None)
     if not user:

@@ -2,13 +2,14 @@ from fastapi import APIRouter, HTTPException, Request, status, Depends
 from src.services.team_members import TeamMembersService
 from src.schemas.team_members import TeamMemberCreate, TeamMemberResponse, TeamMemberWithUser
 from fastapi.security import HTTPBearer
+from src.dependencies.permission import require_permissions
 
 bearer = HTTPBearer()
 router = APIRouter(prefix="/api", tags=["Team Members"], dependencies=[Depends(bearer)])
 
 teamMembersService = TeamMembersService()
 
-@router.post("/teams/{team_id}/members", response_model=TeamMemberResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/teams/{team_id}/members", response_model=TeamMemberResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permissions(["all", "add_team_member"]))])
 async def add_team_member(team_id: int, user_id: int, request: Request):
     """Add team member"""
     requester = getattr(request.state, "user", None)
@@ -44,7 +45,7 @@ async def list_team_members(team_id: int, request: Request):
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get team members")
 
-@router.delete("/teams/{team_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/teams/{team_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_permissions(["all", "remove_team_member"]))])
 async def remove_team_member(team_id: int, user_id: int, request: Request):
     """Remove team member"""
     requester = getattr(request.state, "user", None)

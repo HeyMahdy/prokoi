@@ -3,6 +3,7 @@ from fastapi.security import HTTPBearer
 from src.services.issue_types import IssueTypesService
 from src.schemas.issue_types import IssueTypeCreate, IssueTypeResponse
 from typing import List
+from src.dependencies.permission import require_permissions
 
 bearer = HTTPBearer()
 router = APIRouter(prefix="/api", tags=["Issue Types"], dependencies=[Depends(bearer)])
@@ -43,7 +44,7 @@ async def create_organization_issue_type(org_id: int, issue_type_data: IssueType
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create issue type")
 
 
-@router.get("/issue-types/{issue_type_id}", response_model=IssueTypeResponse, status_code=status.HTTP_200_OK)
+@router.get("/issue-types/{issue_type_id}", response_model=IssueTypeResponse, status_code=status.HTTP_200_OK, dependencies=[Depends(require_permissions(["all", "view_issue_type"]))])
 async def get_issue_type(issue_type_id: int, request: Request):
     """Get a specific issue type by ID"""
     user = getattr(request.state, "user", None)
@@ -61,7 +62,7 @@ async def get_issue_type(issue_type_id: int, request: Request):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch issue type")
 
 
-@router.put("/issue-types/{issue_type_id}", response_model=IssueTypeResponse, status_code=status.HTTP_200_OK)
+@router.put("/issue-types/{issue_type_id}", response_model=IssueTypeResponse, status_code=status.HTTP_200_OK, dependencies=[Depends(require_permissions(["all", "edit_issue_type"]))])
 async def update_issue_type(issue_type_id: int, issue_type_data: IssueTypeCreate, request: Request):
     """Update an existing issue type"""
     user = getattr(request.state, "user", None)
@@ -80,7 +81,7 @@ async def update_issue_type(issue_type_id: int, issue_type_data: IssueTypeCreate
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update issue type")
 
 
-@router.delete("/issue-types/{issue_type_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/issue-types/{issue_type_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_permissions(["all", "delete_issue_type"]))])
 async def delete_issue_type(issue_type_id: int, request: Request):
     """Delete an issue type"""
     user = getattr(request.state, "user", None)

@@ -8,13 +8,14 @@ from src.schemas.issue_skills import (
     SkillMatchResponse
 )
 from fastapi.security import HTTPBearer
+from src.dependencies.permission import require_permissions
 
 bearer = HTTPBearer()
 router = APIRouter(prefix="/api", tags=["Issue Skills"], dependencies=[Depends(bearer)])
 
 issue_skills_service = IssueSkillsService()
 
-@router.post("/issues/{issue_id}/skills", response_model=IssueSkillRequirementResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/issues/{issue_id}/skills", response_model=IssueSkillRequirementResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permissions(["all", "add_skill_to_issue"]))])
 async def add_skill_to_issue(issue_id: int, skill_data: IssueSkillRequirementCreate, request: Request):
     """Add skill requirement to an issue"""
     user = getattr(request.state, "user", None)
@@ -53,7 +54,7 @@ async def update_issue_skill_requirement(
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@router.delete("/issues/{issue_id}/skills/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/issues/{issue_id}/skills/{skill_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_permissions(["all", "remove_skill_from_issue"]))])
 async def remove_skill_from_issue(issue_id: int, skill_id: int, request: Request):
     """Remove skill requirement from an issue"""
     user = getattr(request.state, "user", None)
