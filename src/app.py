@@ -64,6 +64,7 @@ app.add_middleware(
 
 app.include_router(users_router)
 app.include_router(organizations_router)
+app.include_router(team_performance_router)
 app.include_router(teams_router)
 app.include_router(team_members_router)
 app.include_router(roles_router)
@@ -84,9 +85,7 @@ app.include_router(sprints_router)
 app.include_router(skills_router)
 app.include_router(issue_skills_router)
 app.include_router(project_analysis_router)
-app.include_router(team_performance_router)
 app.include_router(user_performance_router)
-app.include_router(sprint_velocity_router)
 @app.get("/")
 async def root():
     return {"message": "Prokoi API is running"}

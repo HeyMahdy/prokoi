@@ -181,3 +181,28 @@ class ProjectsRepository:
             print("error", e)
             raise
 
+    async def get_project_team_members(self, project_id: int) -> list[dict]:
+        """Get all team members assigned to project through teams"""
+        query = """
+        SELECT DISTINCT 
+            u.id as user_id,
+            u.name as user_name,
+            u.email as user_email,
+            t.id as team_id,
+            t.name as team_name,
+            pu.created_at as assigned_to_project_at
+        FROM project_teams pt
+        JOIN teams t ON pt.team_id = t.id
+        JOIN user_team ut ON t.id = ut.team_id
+        JOIN users u ON ut.user_id = u.id
+        LEFT JOIN project_users pu ON u.id = pu.user_id AND pu.project_id = %s
+        WHERE pt.project_id = %s
+        ORDER BY t.name ASC, u.name ASC
+        """
+        try:
+            rows = await db.execute_query(query, (project_id, project_id))
+            return rows
+        except Exception as e:
+            print("error", e)
+            raise
+

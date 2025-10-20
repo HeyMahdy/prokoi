@@ -149,3 +149,21 @@ class ProjectsService:
             print(f"Failed to get project users: {e}")
             raise
 
+    async def get_project_team_members(self, project_id: int, user_id: int):
+        """Get all team members assigned to project through teams"""
+        # Check if user has access to project
+        project = await self.projectsRepo.get_project_by_id(project_id)
+        if not project:
+            raise Exception("Project not found")
+
+        has_access = await self.projectsRepo.user_has_workspace_access(user_id, project['workspace_id'])
+        if not has_access:
+            raise Exception("Access denied to project")
+
+        try:
+            team_members = await self.projectsRepo.get_project_team_members(project_id)
+            return team_members
+        except Exception as e:
+            print(f"Failed to get project team members: {e}")
+            raise
+

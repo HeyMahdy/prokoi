@@ -143,6 +143,24 @@ async def list_project_users(project_id: int, request: Request):
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get project users")
 
+@router.get("/projects/{project_id}/team-members")
+async def list_project_team_members(project_id: int, request: Request):
+    """List all team members assigned to project through teams"""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        team_members = await projectsService.get_project_team_members(project_id, user["id"])
+        return team_members
+    except Exception as e:
+        if "Access denied" in str(e):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        elif "Project not found" in str(e):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get project team members")
+
 @router.get("/projects/{project_id}/teams/{team_id}/velocity", response_model=VelocityResponse)
 async def get_team_project_velocity(project_id: int, team_id: int, request: Request):
     """Get team velocity for specific project"""
