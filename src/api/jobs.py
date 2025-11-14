@@ -71,13 +71,14 @@ class JobApplicationResponse(BaseModel):
 jobs_service = JobsService()
 bearer = HTTPBearer()
 # Create router without bearer dependency
-router = APIRouter(prefix="/api/jobs", tags=["jobs"],dependencies=[Depends(bearer)])
+router = APIRouter(prefix="/api", tags=["jobs"],dependencies=[Depends(bearer)])
 
 # Job endpoints
 @router.post("/", status_code=fastapi_status.HTTP_201_CREATED)
 async def create_job(job_data: JobCreate, request: Request):
     """Create a new job posting"""
     user = getattr(request.state, "user", None)
+    print(user)
     if not user:
         raise HTTPException(status_code=fastapi_status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     
@@ -104,7 +105,7 @@ async def create_job(job_data: JobCreate, request: Request):
     except Exception as e:
         raise HTTPException(status_code=fastapi_status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-@router.get("/{job_id}")
+@router.get("/search/{job_id}")
 async def get_job(job_id: str):
     """Get job by ID"""
     try:
@@ -113,7 +114,7 @@ async def get_job(job_id: str):
     except Exception as e:
         raise HTTPException(status_code=fastapi_status.HTTP_404_NOT_FOUND, detail=str(e))
 
-@router.put("/{job_id}")
+@router.put("/update/{job_id}")
 async def update_job(job_id: str, job_data: JobUpdate, request: Request):
     """Update job by ID"""
     user = getattr(request.state, "user", None)
@@ -138,7 +139,7 @@ async def update_job(job_id: str, job_data: JobUpdate, request: Request):
     except Exception as e:
         raise HTTPException(status_code=fastapi_status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-@router.delete("/{job_id}")
+@router.delete("/put/{job_id}")
 async def delete_job(job_id: str, request: Request):
     """Delete job by ID"""
     user = getattr(request.state, "user", None)
@@ -159,7 +160,7 @@ async def delete_job(job_id: str, request: Request):
     except Exception as e:
         raise HTTPException(status_code=fastapi_status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-@router.get("/")
+@router.get("/get")
 async def search_jobs(
     search_term: Optional[str] = None,
     location: Optional[str] = None,
