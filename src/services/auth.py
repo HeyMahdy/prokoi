@@ -21,6 +21,7 @@ class AuthService:
 
     async def login(self, user_credentials: UserLogin):
         """Login user and return access token"""
+     
         user = await self.authenticate_user(user_credentials.email, user_credentials.password)
         if not user:
             raise HTTPException(
@@ -34,7 +35,7 @@ class AuthService:
 
         access_token = create_access_token(data={"sub": user['email']})
         return {"access_token": access_token, "token_type": "bearer"}
-
+   
 
     async def get_current_user(self, token: str):
         """Get current user from JWT token"""
@@ -50,8 +51,8 @@ class AuthService:
         if payload is None:
             raise credentials_exception
 
-        email: str = payload.get("sub")
-        if email is None:
+        email = payload.get("sub")
+        if not isinstance(email, str):
             raise credentials_exception
 
         user = await self.user_repo.find_user_by_email(email)

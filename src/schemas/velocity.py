@@ -24,3 +24,22 @@ class TeamVelocityHistory(BaseModel):
     updated_at: datetime
 
 
+class JobCreate(BaseModel):
+    title: str 
+    company: str 
+    location: str 
+    experience_required: str
+    job_type: str 
+    description: str 
+    
+
+class ResourceCreate(BaseModel):
+    title: str
+    platform: str
+    url: str
+    cost: str  # keep it simple, can be "Free" or price string
+
+
+class ExperienceUpdate(BaseModel):
+    title: str
+    description: str

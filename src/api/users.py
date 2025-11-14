@@ -20,8 +20,9 @@ async def signup(user_data: UserSchema):
     except ValueError as ve:
         # Known errors like duplicate email
         raise HTTPException(status_code=400, detail=str(ve))
-    except Exception:
+    except Exception as e:
         # Unknown/internal errors
+        print(e)
         raise HTTPException(
             status_code=500,
             detail="Something went wrong with creating user"
