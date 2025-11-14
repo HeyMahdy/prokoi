@@ -13,6 +13,8 @@ from src.api.resources import router as resources_router
 from src.api.bookmarks import router as bookmarks_router
 from src.api.roadmaps import router as roadmaps_router
 from src.api.skill_verification_tests import router as skill_tests_router
+from src.api.cv_uploads import router as cv_uploads_router
+from src.api.cv_notes import router as cv_notes_router
 
 
 # Add to your existing routers
@@ -67,6 +69,10 @@ app.include_router(bookmarks_router)
 app.include_router(roadmaps_router)
 
 app.include_router(skill_tests_router)
+
+app.include_router(cv_uploads_router)
+
+app.include_router(cv_notes_router)
 
 
 @app.get("/")
