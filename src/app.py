@@ -10,6 +10,7 @@ from src.middleware.roleMiddleware import RoleMiddleware
 from src.api.skills import router as skills_router
 from src.api.jobs import router as jobs_router
 from src.api.resources import router as resources_router
+from src.api.bookmarks import router as bookmarks_router
 
 
 # Add to your existing routers
@@ -58,6 +59,8 @@ app.include_router(roles_router)
 app.include_router(jobs_router)
 
 app.include_router(resources_router)
+
+app.include_router(bookmarks_router)
 
 
 @app.get("/")
