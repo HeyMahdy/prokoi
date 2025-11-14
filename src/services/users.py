@@ -15,9 +15,16 @@ class UsersService:
 
         password_hash = get_password_hash(user_data.password_hash)
         user_dict = {
-            'name': user_data.name.strip(),
+            'full_name': user_data.full_name.strip(),
             'email': user_data.email.strip().lower(),
-            'password_hash': password_hash
+            'password_hash': password_hash,
+            'role': user_data.role.value if user_data.role else 'jobseeker',
+            'education_level': user_data.education_level,
+            'department': user_data.department,
+            'experience_level': user_data.experience_level.value if user_data.experience_level else None,
+            'preferred_track': user_data.preferred_track,
+            'is_new_to_job_market': user_data.is_new_to_job_market or False,
+            'is_active': user_data.is_active if user_data.is_active is not None else True
         }
 
         user_id = await self.user_repo.save_user(user_dict)
@@ -33,7 +40,3 @@ class UsersService:
             return existing_user
         except Exception as e:
             raise Exception(f"Failed to fetch user: {str(e)}")
-
-
-
-

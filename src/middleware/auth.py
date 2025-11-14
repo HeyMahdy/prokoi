@@ -5,6 +5,7 @@ from jose import JWTError, jwt
 from src.core.config import settings
 from src.repositories.users import UserRepository
 import pprint
+
 class AuthMiddleware:
     def __init__(self, app, allow_paths: list[str] | None = None):
         self.app = app
@@ -41,8 +42,10 @@ class AuthMiddleware:
             return await JSONResponse({"detail": "User not found"}, status_code=401)(scope, receive, send)
 
         # Attach user to request.state for downstream handlers
-        scope.setdefault("state", {})
-        request.state.user = user
-
+        if not hasattr(request, "state"):
+            class State:
+                pass
+            request.state = State()
+        setattr(request.state, "user", user)
 
         return await self.app(scope, receive, send)

@@ -2,8 +2,7 @@ from urllib import request
 
 from fastapi import APIRouter, HTTPException, Request, status ,Depends
 from typing import Any
-from src.services.orginizations import OrginizationsService
-from src.schemas.organizations import OrganizationResponse
+
 from fastapi.security import HTTPBearer
 from src.services.roles import RoleService
 from src.dependencies.permission import require_permissions
