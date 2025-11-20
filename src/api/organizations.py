@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/organizations", tags=["Organizations"],dependenc
 
 orgservice = OrginizationsService()
 
-@router.post("/create", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permissions(["all", "create_organization"]))])
+@router.post("/create", status_code=status.HTTP_201_CREATED)
 async def create_org(name: str, request: Request):
     user = getattr(request.state, "user", None)
     if not user:
@@ -30,7 +30,7 @@ async def create_org(name: str, request: Request):
 
 @router.get("/get", status_code=status.HTTP_200_OK,description="Get all organization user is joined or created.")
 async def get_org(request: Request):
-    user = getattr(request.state, "user", None)
+    user = getattr(request.state, "user")
     print(user)
     try :
         org = await orgservice.get_organization_by_id(user["id"])

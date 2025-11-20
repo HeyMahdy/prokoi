@@ -1,7 +1,5 @@
-import pymysql
 from pymysql.cursors import DictCursor
 from src.core.config import settings
-import asyncio
 import aiomysql
 
 class Database:
@@ -22,10 +20,13 @@ class Database:
 
       )
     async def get_connection(self):
+        if self.pool is None:
+            raise RuntimeError("Pool not initialized. Call create_pool() first.")
         return await self.pool.acquire()
 
     async def release_connection(self, conn):
-        """Release connection back to pool"""
+        if self.pool is None:
+            raise RuntimeError("Pool not initialized.")
         self.pool.release(conn)
 
     async def execute_query(self, query:str,params=None):
@@ -35,6 +36,8 @@ class Database:
             await cursor.execute(query,params)
             await conn.commit()
             result = await cursor.fetchall()
+            print("inside the repo")
+            print(result)
             return result
       finally:
           await self.release_connection(conn)
@@ -60,7 +63,7 @@ class Database:
             async with conn.cursor(aiomysql.DictCursor) as cursor:
                 await cursor.execute(query, params)
                 await conn.commit()
-                result = await cursor.rowcount()
+                result = cursor.rowcount
                 return result
 
         finally:

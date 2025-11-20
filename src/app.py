@@ -8,7 +8,7 @@ from src.core.database import db
 from contextlib import asynccontextmanager
 from src.api.roles import router as roles_router
 from src.middleware.auth import AuthMiddleware
-from src.middleware.roleMiddleware import RoleMiddleware
+
 from src.api.workspaces import router as workspaces_router
 from src.api.projects import router as projects_router
 from src.api.organization_requests import router as organization_requests_router
@@ -38,8 +38,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
+# Middleware Stack (Executed in reverse order of addition)
+# Flow: CORS -> Auth -> Role -> App
 
-# CORS middleware
+# 2. Auth Middleware
 app.add_middleware(
     AuthMiddleware,
     allow_paths=[
@@ -51,11 +53,10 @@ app.add_middleware(
     ],
 )
 
-
-
+# 1. CORS Middleware (Outermost - runs first)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -2,8 +2,7 @@ from datetime import datetime
 from fastapi import HTTPException, status
 from src.core.security import verify_password, get_password_hash, create_access_token
 from src.repositories.users import UserRepository
-from src.schemas.auth import UserLogin
-from src.schemas.users import UserSchema, UserResponse
+from src.schemas.users import UserSchema, UserResponse , UserLogin
 
 
 class AuthService:
@@ -50,7 +49,7 @@ class AuthService:
         if payload is None:
             raise credentials_exception
 
-        email: str = payload.get("sub")
+        email: str = payload["sub"]
         if email is None:
             raise credentials_exception
 

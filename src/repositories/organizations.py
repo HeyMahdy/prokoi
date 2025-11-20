@@ -15,18 +15,19 @@ class OrganizationsRepository:
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute("INSERT INTO roles (name, organization_id) VALUES (%s, %s)", ("admin", org_id))
                 role_id = cur.lastrowid
-                print("this is role id ",role_id)
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute("INSERT INTO user_role (user_id,role_id) VALUES (%s, %s)", (user_id, role_id))
                 user_role_id = cur.lastrowid
-                print("this is fuck id ",role_id)
+                # logger.debug(f"Created user_role with id: {user_role_id}")
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute("INSERT INTO organization_users (user_id,organization_id) VALUES (%s, %s)", (user_id, org_id))
                 organization_users_id = cur.lastrowid
                 print("this is muck id ", organization_users_id)
             async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute("INSERT INTO role_permissions (role_id,permission_id) VALUES (%s, %s)", (role_id, 1))
+                await cur.execute("INSERT INTO role_permissions (role_id,permission_id) VALUES (%s, %s)", (role_id, 285))
             await conn.commit()
+            print("this is id")
+            print(org_id)
             return org_id
         except Exception:
             await conn.rollback()
@@ -43,7 +44,7 @@ class OrganizationsRepository:
 
 
     async def get_all_organizations(self,user_id:int):
-        print(user_id)
+        print("in insdie the repo")
         query = """
         SELECT DISTINCT o.id, o.name, o.created_at, o.updated_at 
         FROM organizations o
@@ -52,6 +53,7 @@ class OrganizationsRepository:
         """
         params = (user_id,)
         result = await db.execute_query(query, params)
+        print("result")
         print(result)
         return result
 

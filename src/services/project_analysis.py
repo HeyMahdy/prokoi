@@ -2,6 +2,9 @@ from src.repositories.Analysis import AnalysisRepository
 from src.schemas.project_analysis import ProjectAnalysisDepthResponse, ProjectUser, ProjectTeam
 from typing import Optional
 import json
+from src.core.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 class ProjectAnalysisService:
     def __init__(self):
@@ -90,5 +93,5 @@ class ProjectAnalysisService:
             return response
             
         except Exception as e:
-            print(f"Failed to get project analysis depth: {e}")
+            logger.error(f"Failed to get project analysis depth: {e}")
             raise Exception(f"Failed to fetch project analysis: {str(e)}")
