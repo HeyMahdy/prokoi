@@ -23,7 +23,7 @@ class OrginizationsService:
             org = await self.orgRepo.get_organization_by_id(org_id)
             if not org:
                 raise Exception("Organization not found after creation")
-            print(org)
+            
 
             return org
         except Exception as e:

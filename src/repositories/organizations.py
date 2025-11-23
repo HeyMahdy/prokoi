@@ -12,9 +12,14 @@ class OrganizationsRepository:
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute("INSERT INTO organizations (name) VALUES (%s)", (name,))
                 org_id = cur.lastrowid
+
+                print("this is the org id")
+                print(org_id)
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute("INSERT INTO roles (name, organization_id) VALUES (%s, %s)", ("admin", org_id))
                 role_id = cur.lastrowid
+                print("this is the role_id")
+                print(role_id)
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute("INSERT INTO user_role (user_id,role_id) VALUES (%s, %s)", (user_id, role_id))
                 user_role_id = cur.lastrowid
@@ -24,14 +29,14 @@ class OrganizationsRepository:
                 organization_users_id = cur.lastrowid
                 print("this is muck id ", organization_users_id)
             async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute("INSERT INTO role_permissions (role_id,permission_id) VALUES (%s, %s)", (role_id, 285))
+                await cur.execute("INSERT INTO role_permissions (role_id,permission_id) VALUES (%s, %s)", (role_id, 379))
             await conn.commit()
             print("this is id")
-            print(org_id)
+            print(user_role_id)
             return org_id
-        except Exception:
+        except Exception as e:
             await conn.rollback()
-            raise Exception("Failed to create organization",Exception)
+            raise Exception("Failed to create organization",e)
         finally:
             await conn.autocommit(True)
             await db.release_connection(conn)

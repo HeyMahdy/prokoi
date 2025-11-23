@@ -21,7 +21,7 @@ async def create_org(name: str, request: Request):
 
     try:
         org = await orgservice.create_organization(name, user["id"])
-        print(org)
+        
         return org
     except HTTPException:
         raise
