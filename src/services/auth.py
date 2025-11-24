@@ -31,7 +31,7 @@ class AuthService:
         # Update last login time
         await self.user_repo.update_last_login(user["id"])
 
-        access_token = create_access_token(data={"sub": user['email']})
+        access_token = create_access_token(data={"sub": user['id']})
         return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -49,11 +49,11 @@ class AuthService:
         if payload is None:
             raise credentials_exception
 
-        email: str = payload["sub"]
-        if email is None:
+        id: int = payload["sub"]
+        if id is None:
             raise credentials_exception
 
-        user = await self.user_repo.find_user_by_email(email)
+        user = await self.user_repo.find_user_by_id(id)
         if user is None:
             raise credentials_exception
 

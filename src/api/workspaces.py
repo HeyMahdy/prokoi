@@ -7,11 +7,19 @@ from src.services.view import View
 bearer = HTTPBearer()
 router = APIRouter(prefix="/api", tags=["Workspaces"], dependencies=[Depends(bearer)])
 
-workspacesService = WorkspacesService()
-view  =View ()
+class WorkspaceServiceDependency:
+    def __call__(self):
+        return WorkspacesService()
+
+class ViewServiceDependency:
+    def __call__(self):
+        return View()
+
+workspaces_service = WorkspaceServiceDependency()
+view_service = ViewServiceDependency()
 
 @router.post("/organizations/{org_id}/workspaces", status_code=status.HTTP_201_CREATED,dependencies=[Depends(require_permissions(["all","create_workspace"]))])
-async def create_workspace(org_id: int, name: str, request: Request = None):
+async def create_workspace(org_id: int, name: str, request: Request, workspacesService: WorkspacesService = Depends(workspaces_service)):
     """Create workspace in organization"""
     user = getattr(request.state, "user", None)
     if not user:
@@ -29,7 +37,7 @@ async def create_workspace(org_id: int, name: str, request: Request = None):
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create workspace")
 
 @router.get("/organizations/{org_id}/workspaces",dependencies=[Depends(require_permissions(["all","view_workspace"]))])
-async def list_organization_workspaces(org_id: int, request: Request):
+async def list_organization_workspaces(org_id: int, request: Request, workspacesService: WorkspacesService = Depends(workspaces_service), view: View = Depends(view_service)):
     """List all workspaces in organization"""
     user = getattr(request.state, "user", None)
     if not user:
@@ -50,7 +58,7 @@ async def list_organization_workspaces(org_id: int, request: Request):
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get workspaces")
 
 @router.post("/workspaces/{workspace_id}/teams", status_code=status.HTTP_201_CREATED,dependencies=[Depends(require_permissions(["all","assign_team_to_workspace"]))])
-async def assign_team_to_workspace(workspace_id: int, team_id: int, request: Request):
+async def assign_team_to_workspace(workspace_id: int, team_id: int, request: Request, workspacesService: WorkspacesService = Depends(workspaces_service), view: View = Depends(view_service)):
     """Assign team to workspace"""
     user = getattr(request.state, "user", None)
     if not user:
@@ -72,7 +80,7 @@ async def assign_team_to_workspace(workspace_id: int, team_id: int, request: Req
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to assign team to workspace")
 
 @router.get("/workspaces/{workspace_id}/teams",dependencies=[Depends(require_permissions(["all","view_workspace_teams"]))])
-async def list_workspace_teams(workspace_id: int, request: Request):
+async def list_workspace_teams(workspace_id: int, request: Request, workspacesService: WorkspacesService = Depends(workspaces_service), view: View = Depends(view_service)):
     """List all teams assigned to workspace"""
     user = getattr(request.state, "user", None)
     if not user:

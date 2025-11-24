@@ -11,10 +11,16 @@ from src.dependencies.permission import require_permissions
 bearer = HTTPBearer()
 router = APIRouter(prefix="/api/organizations", tags=["Organizations"],dependencies=[Depends(bearer)])
 
-orgservice = OrginizationsService()
+
+class OrgServiceDependency:
+    def __call__(self):
+        return OrginizationsService()
+
+org_service = OrgServiceDependency()
+
 
 @router.post("/create", status_code=status.HTTP_201_CREATED)
-async def create_org(name: str, request: Request):
+async def create_org(name: str, request: Request,orgservice: OrginizationsService = Depends(org_service)):
     user = getattr(request.state, "user", None)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
@@ -29,7 +35,7 @@ async def create_org(name: str, request: Request):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create organization")
 
 @router.get("/get", status_code=status.HTTP_200_OK,description="Get all organization user is joined or created.")
-async def get_org(request: Request):
+async def get_org(request: Request,orgservice: OrginizationsService = Depends(org_service)):
     user = getattr(request.state, "user")
     print(user)
     try :
@@ -39,7 +45,7 @@ async def get_org(request: Request):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to find organization")
 
 @router.post("/{org_id}/invite", status_code=status.HTTP_201_CREATED, description="Invite to join organization.")
-async def invite(org_id: int, email: str, request: Request):
+async def invite(org_id: int, email: str, request: Request,orgservice: OrginizationsService = Depends(org_service)):
     user = getattr(request.state, "user", None)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
@@ -60,7 +66,7 @@ async def invite(org_id: int, email: str, request: Request):
         )
 
 @router.get("/invite_list", status_code=status.HTTP_200_OK,description="Get all invites")
-async def get_invite_list(request: Request):
+async def get_invite_list(request: Request,orgservice: OrginizationsService = Depends(org_service)):
     user = getattr(request.state, "user", None)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
@@ -72,7 +78,7 @@ async def get_invite_list(request: Request):
 
 
 @router.post("/invitations/{invitation_id}/accept", status_code=status.HTTP_200_OK)
-async def accept_invitation(invitation_id: int, request: Request):
+async def accept_invitation(invitation_id: int, request: Request,orgservice: OrginizationsService = Depends(org_service)):
     """Accept organization invitation"""
     user = getattr(request.state, "user", None)
     if not user:
@@ -91,7 +97,7 @@ async def accept_invitation(invitation_id: int, request: Request):
 
 
 @router.get("/{org_id}/users", dependencies=[Depends(require_permissions(["all", "view_organization_users"]))])
-async def get_organization_users(org_id: int, request: Request):
+async def get_organization_users(org_id: int, request: Request,orgservice: OrginizationsService = Depends(org_service)):
     """Get all users in organization"""
     user = getattr(request.state, "user", None)
     if not user:
