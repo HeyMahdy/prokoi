@@ -11,7 +11,7 @@ class AuthService:
 
     async def authenticate_user(self, email: str, password: str):
         """Authenticate user with email and password"""
-        user = await self.user_repo.find_user_by_email(email)
+        user = await self.user_repo.find_user_by_email(email) 
         if not user:
             return False
         if not verify_password(password, user['password_hash']):
@@ -29,9 +29,9 @@ class AuthService:
             )
 
         # Update last login time
-        await self.user_repo.update_last_login(user["id"])
+        await self.user_repo.update_last_login(user["email"])
 
-        access_token = create_access_token(data={"sub": user['id']})
+        access_token = create_access_token(data={"sub": user['email']})
         return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -49,11 +49,11 @@ class AuthService:
         if payload is None:
             raise credentials_exception
 
-        id: int = payload["sub"]
-        if id is None:
+        email: str = payload["sub"]
+        if email is None:
             raise credentials_exception
 
-        user = await self.user_repo.find_user_by_id(id)
+        user = await self.user_repo.find_user_by_email(email)
         if user is None:
             raise credentials_exception
 

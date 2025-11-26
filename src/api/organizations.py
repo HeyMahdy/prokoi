@@ -22,6 +22,7 @@ org_service = OrgServiceDependency()
 @router.post("/create", status_code=status.HTTP_201_CREATED)
 async def create_org(name: str, request: Request,orgservice: OrginizationsService = Depends(org_service)):
     user = getattr(request.state, "user", None)
+  
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
@@ -37,6 +38,8 @@ async def create_org(name: str, request: Request,orgservice: OrginizationsServic
 @router.get("/get", status_code=status.HTTP_200_OK,description="Get all organization user is joined or created.")
 async def get_org(request: Request,orgservice: OrginizationsService = Depends(org_service)):
     user = getattr(request.state, "user")
+    print("this is the user")
+    print(user)
     print(user)
     try :
         org = await orgservice.get_organization_by_id(user["id"])

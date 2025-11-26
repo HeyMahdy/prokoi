@@ -28,7 +28,7 @@ class UserRepository:
 
     async def find_user_by_id(self, user_id: int):
         query = "SELECT * FROM users WHERE id = %s"
-        params = [user_id]
+        params = [user_id,]
         result = await db.execute_query(query, params)
         return result[0] if result else None
 
@@ -36,7 +36,7 @@ class UserRepository:
     async def update_last_login(self, user_id: int):
       """Update user's last login timestamp"""
       query = "UPDATE users SET last_login_at = NOW() WHERE id = %s"
-      params = [user_id]
+      params = [user_id,]
       await db.execute_query(query, params)
 
 

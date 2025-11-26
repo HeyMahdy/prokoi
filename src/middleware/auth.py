@@ -22,6 +22,7 @@ class AuthMiddleware:
             return await self.app(scope, receive, send)
 
         auth = request.headers.get("authorization", "")
+        print(auth)
         if not auth.startswith("Bearer "):
             return await JSONResponse({"detail": "Not authenticated"}, status_code=401)(scope, receive, send)
 
@@ -38,7 +39,7 @@ class AuthMiddleware:
         repo = UserRepository()
         user = await repo.find_user_by_email(email)
         if not user:
-            return await JSONResponse({"detail": "User not found"}, status_code=401)(scope, receive, send)
+            return await JSONResponse({"(detail": "User not found"}, status_code=401)(scope, receive, send)
 
         # Attach user to request.state for downstream handlers
         scope.setdefault("state", {})
