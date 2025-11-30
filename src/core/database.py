@@ -1,24 +1,23 @@
-from pymysql.cursors import DictCursor
+import asyncpg
 from src.core.config import settings
-import aiomysql
+
 
 class Database:
     def __init__(self):
-      self.pool = None
+        self.pool = None
 
     async def create_pool(self):
-      self.pool = await aiomysql.create_pool(
-       host=settings.DB_HOST,
-       user=settings.DB_USER,
-       password=settings.DB_PASSWORD,
-       port =  settings.DB_PORT,
-        db  = settings.DB_NAME,
-          cursorclass=DictCursor,
-          autocommit=True,
-          minsize=1,
-          maxsize=10
+        self.pool = await asyncpg.create_pool(
+            host=settings.DB_HOST,
+            user=settings.DB_USER,
+            password=settings.DB_PASSWORD,
+            port=settings.DB_PORT,
+            database=settings.DB_NAME,
+            ssl="require",
+            min_size=1,
+            max_size=10,
+        )
 
-      )
     async def get_connection(self):
         if self.pool is None:
             raise RuntimeError("Pool not initialized. Call create_pool() first.")
@@ -27,45 +26,31 @@ class Database:
     async def release_connection(self, conn):
         if self.pool is None:
             raise RuntimeError("Pool not initialized.")
-        self.pool.release(conn)
+        await self.pool.release(conn)
 
-    async def execute_query(self, query:str,params=None):
-      conn = await self.get_connection()
-      try:
-        async with conn.cursor(aiomysql.DictCursor) as cursor:
-            await cursor.execute(query,params)
-            await conn.commit()
-            result = await cursor.fetchall()
-            print("inside the repo")
-            print(result)
-            return result
-      finally:
-          await self.release_connection(conn)
-
-
-
-    async def execute_insert(self,query:str,params=None):
+    async def execute_query(self, query: str, params=None):
         conn = await self.get_connection()
         try:
-            async with conn.cursor(aiomysql.DictCursor) as cursor:
-                await cursor.execute(query, params)
-                await conn.commit()
-                user_id = cursor.lastrowid
-                return user_id
+            result = await conn.fetch(query, *params) if params else await conn.fetch(query)
+            return [dict(record) for record in result]
         finally:
             await self.release_connection(conn)
 
-
-
-    async def execute_update(self,query:str,params=None):
+    async def execute_insert(self, query: str, params=None):
         conn = await self.get_connection()
         try:
-            async with conn.cursor(aiomysql.DictCursor) as cursor:
-                await cursor.execute(query, params)
-                await conn.commit()
-                result = cursor.rowcount
-                return result
+            row = await conn.fetchrow(query, *params) if params else await conn.fetchrow(query)
+            # Return PostgreSQL generated id if available
+            return row["id"] if row and "id" in row else None
+        finally:
+            await self.release_connection(conn)
 
+    async def execute_update(self, query: str, params=None):
+        conn = await self.get_connection()
+        try:
+            result = await conn.execute(query, *params) if params else await conn.execute(query)
+            # result looks like 'UPDATE <number>'
+            return int(result.split()[-1])
         finally:
             await self.release_connection(conn)
 
@@ -78,10 +63,7 @@ class Database:
 
     async def close(self):
         if self.pool:
-            self.pool.close()
-
-
-
+            await self.pool.close()
 
 
 db = Database()

@@ -29,7 +29,8 @@ class AuthService:
             )
 
         # Update last login time
-        await self.user_repo.update_last_login(user["email"])
+        await self.user_repo.update_last_login(user["id"])
+
 
         access_token = create_access_token(data={"sub": user['email']})
         return {"access_token": access_token, "token_type": "bearer"}
