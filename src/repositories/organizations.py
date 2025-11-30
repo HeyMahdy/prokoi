@@ -1,60 +1,62 @@
 from src.core.database import db
-import aiomysql
 
 
 class OrganizationsRepository:
     async def create_organization(self, name: str, user_id: int):
-        conn = await db.get_connection()
-        try:
+        async for conn in db.connection():
+            async with conn.transaction():
+                # Create organization
+                org_record = await conn.fetchrow(
+                    "INSERT INTO organizations (name) VALUES ($1) RETURNING id",
+                    name
+                )
+                org_id = org_record['id']
+             
+
+                # Create admin role
+                role_record = await conn.fetchrow(
+                    "INSERT INTO roles (name, organization_id) VALUES ($1, $2) RETURNING id",
+                    "admin", org_id
+                )
+                role_id = role_record['id']
             
-            await conn.autocommit(False)
-            await conn.begin()
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute("INSERT INTO organizations (name) VALUES (%s)", (name,))
-                org_id = cur.lastrowid
 
-                print("this is the org id")
+                # Assign role to user
+                await conn.execute(
+                    "INSERT INTO user_role (user_id, role_id) VALUES ($1, $2)",
+                    user_id, role_id
+                )
+
+                # Add user to organization
+                await conn.execute(
+                    "INSERT INTO organization_users (user_id, organization_id) VALUES ($1, $2)",
+                    user_id, org_id
+                )
+                print("user added to organization")
+
+                # Assign default permission
+                await conn.execute(
+                    "INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)",
+                    role_id, 1
+                )
+
+                print("this is id")
                 print(org_id)
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute("INSERT INTO roles (name, organization_id) VALUES (%s, %s)", ("admin", org_id))
-                role_id = cur.lastrowid
-                print("this is the role_id")
-                print(role_id)
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute("INSERT INTO user_role (user_id,role_id) VALUES (%s, %s)", (user_id, role_id))
-                user_role_id = cur.lastrowid
-                # logger.debug(f"Created user_role with id: {user_role_id}")
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute("INSERT INTO organization_users (user_id,organization_id) VALUES (%s, %s)", (user_id, org_id))
-                organization_users_id = cur.lastrowid
-                print("this is muck id ", organization_users_id)
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute("INSERT INTO role_permissions (role_id,permission_id) VALUES (%s, %s)", (role_id, 379))
-            await conn.commit()
-            print("this is id")
-            print(user_role_id)
-            return org_id
-        except Exception as e:
-            await conn.rollback()
-            raise Exception("Failed to create organization",e)
-        finally:
-            await conn.autocommit(True)
-            await db.release_connection(conn)
+                return org_id
 
-    async def get_organization_by_id(self,org_id:int):
-        query = "SELECT * FROM organizations WHERE organizations.id = %s"
-        params = {org_id,}
+    async def get_organization_by_id(self, org_id: int):
+        query = "SELECT * FROM organizations WHERE organizations.id = $1"
+        params = (org_id,)
         result = await db.execute_query(query, params)
         return result
 
-
-    async def get_all_organizations(self,user_id:int):
+    async def get_all_organizations(self, user_id: int):
         print("in insdie the repo")
         query = """
         SELECT DISTINCT o.id, o.name, o.created_at, o.updated_at 
         FROM organizations o
-        JOIN  organization_users ur ON o.id = ur.organization_id
-        where ur.user_id = %s 
+        JOIN organization_users ur ON o.id = ur.organization_id
+        WHERE ur.user_id = $1
         """
         params = (user_id,)
         result = await db.execute_query(query, params)
@@ -62,39 +64,34 @@ class OrganizationsRepository:
         print(result)
         return result
 
-    async def invite_member (self, invitedBy:int, receiver:int,org_id:int):
+    async def invite_member(self, invitedBy: int, receiver: int, org_id: int):
         query = """
-        insert into organization_invitations (invited_by, user_id, organization_id) values (%s, %s,%s)
+        INSERT INTO organization_invitations (invited_by, user_id, organization_id) 
+        VALUES ($1, $2, $3)
         """
-        params = (invitedBy, receiver,org_id)
+        params = (invitedBy, receiver, org_id)
         result = await db.execute_insert(query, params)
         return result
 
-    async def invite_list(self,user_id:int):
+    async def invite_list(self, user_id: int):
         query = """
-        select * from organization_invitations
-        where invited_by = %s or user_id = %s
+        SELECT * FROM organization_invitations
+        WHERE invited_by = $1 OR user_id = $1
         """
-        params = (user_id,user_id)
+        params = (user_id,)
         result = await db.execute_query(query, params)
         return result
 
     async def accept_invitation(self, user_id: int, invitation_id: int):
         """Accept an organization invitation"""
-        conn = await db.get_connection()
-        try:
-            await conn.autocommit(False)
-            await conn.begin()
-
-            # 1. Get invitation details
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute("""
-                                  SELECT organization_id, user_id, status
-                                  FROM organization_invitations
-                                  WHERE id = %s
-                                    AND user_id = %s
-                                  """, (invitation_id, user_id))
-                invitation = await cur.fetchone()
+        async for conn in db.connection():
+            async with conn.transaction():
+                # 1. Get invitation details
+                invitation = await conn.fetchrow("""
+                    SELECT organization_id, user_id, status
+                    FROM organization_invitations
+                    WHERE id = $1 AND user_id = $2
+                """, invitation_id, user_id)
 
                 if not invitation:
                     raise Exception("Invitation not found")
@@ -102,44 +99,31 @@ class OrganizationsRepository:
                 if invitation['status'] != 'pending':
                     raise Exception("Invitation already processed")
 
-            # 2. Add user to organization_users
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute("""
-                                  INSERT INTO organization_users (organization_id, user_id)
-                                  VALUES (%s, %s)
-                                  """, (invitation['organization_id'], user_id))
-                org_user_id = cur.lastrowid
+                # 2. Add user to organization_users
+                await conn.execute("""
+                    INSERT INTO organization_users (organization_id, user_id)
+                    VALUES ($1, $2)
+                """, invitation['organization_id'], user_id)
 
-            # 3. Update invitation status to 'accepted'
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute("""
-                                  UPDATE organization_invitations
-                                  SET status     = 'accepted',
-                                      updated_at = CURRENT_TIMESTAMP
-                                  WHERE id = %s
-                                  """, (invitation_id,))
+                # 3. Update invitation status to 'accepted'
+                await conn.execute("""
+                    UPDATE organization_invitations
+                    SET status = 'accepted',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = $1
+                """, invitation_id)
 
-            # 4. Get organization details for response
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute("""
-                                  SELECT id, name, created_at, updated_at
-                                  FROM organizations
-                                  WHERE id = %s
-                                  """, (invitation['organization_id'],))
-                organization = await cur.fetchone()
+                # 4. Get organization details for response
+                organization = await conn.fetchrow("""
+                    SELECT id, name, created_at, updated_at
+                    FROM organizations
+                    WHERE id = $1
+                """, invitation['organization_id'])
 
-            await conn.commit()
-            return {
-                "organization": organization,
-                "message": "Successfully joined organization"
-            }
-
-        except Exception as e:
-            await conn.rollback()
-            raise e
-        finally:
-            await conn.autocommit(True)
-            await db.release_connection(conn)
+                return {
+                    "organization": dict(organization),
+                    "message": "Successfully joined organization"
+                }
 
     async def get_organization_users(self, organization_id: int) -> list[dict]:
         """Get all users in an organization"""
@@ -152,7 +136,7 @@ class OrganizationsRepository:
                        ou.created_at as joined_at
                 FROM organization_users ou
                          JOIN users u ON ou.user_id = u.id
-                WHERE ou.organization_id = %s
+                WHERE ou.organization_id = $1
                 ORDER BY ou.created_at DESC 
                 """
         return await db.execute_query(query, (organization_id,))
@@ -162,9 +146,9 @@ class OrganizationsRepository:
         query = """
                 SELECT 1
                 FROM organization_users ou
-                WHERE ou.organization_id = %s \
-                  AND ou.user_id = %s LIMIT 1 \
+                WHERE ou.organization_id = $1 
+                  AND ou.user_id = $2 
+                LIMIT 1
                 """
         rows = await db.execute_query(query, (organization_id, user_id))
         return len(rows) > 0
-

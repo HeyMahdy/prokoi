@@ -1,5 +1,5 @@
 from src.core.database import db
-import aiomysql
+
 
 class OrganizationRequestsRepository:
     async def get_outgoing_requests(self, sender_id: int) -> list[dict]:
@@ -12,7 +12,7 @@ class OrganizationRequestsRepository:
         FROM organization_outgoing_requests oor
         JOIN organizations o ON oor.organization_id = o.id
         JOIN users u ON oor.receiver_id = u.id
-        WHERE oor.sender_id = %s
+        WHERE oor.sender_id = $1
         ORDER BY oor.created_at DESC
         """
         return await db.execute_query(query, (sender_id,))
@@ -27,7 +27,7 @@ class OrganizationRequestsRepository:
         FROM organization_outgoing_requests oor
         JOIN organizations o ON oor.organization_id = o.id
         JOIN users u ON oor.sender_id = u.id
-        WHERE oor.receiver_id = %s
+        WHERE oor.receiver_id = $1
         ORDER BY oor.created_at DESC
         """
         return await db.execute_query(query, (receiver_id,))
@@ -36,45 +36,34 @@ class OrganizationRequestsRepository:
         """Create a new outgoing request"""
         query = """
         INSERT INTO organization_outgoing_requests (organization_id, sender_id, receiver_id)
-        VALUES (%s, %s, %s)
+        VALUES ($1, $2, $3)
         """
-        return await db.execute_insert(query, (organization_id, sender_id, receiver_id))
+        result = await db.execute_insert(query, (organization_id, sender_id, receiver_id))
+        return result or 0
 
     async def update_request_status(self, request_id: int, status: str, user_id: int, organization_id: int) -> bool:
         """Update request status (only receiver can accept/reject)"""
-        conn = await db.get_connection()
-        try:
-            await conn.autocommit(False)
-            await conn.begin()
-
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute(
+        async for conn in db.connection():
+            async with conn.transaction():
+                await conn.execute(
                     """UPDATE organization_outgoing_requests
-                       SET status     = %s,
+                       SET status     = $1,
                            updated_at = CURRENT_TIMESTAMP
-                       WHERE id = %s
-                         AND receiver_id = %s""",
-                    (status, request_id, user_id)
+                       WHERE id = $2
+                         AND receiver_id = $3""",
+                    status, request_id, user_id
                 )
 
-            # Only add user to organization if accepted
-            if status == "accepted":
-                async with conn.cursor(aiomysql.DictCursor) as cur:
-                    await cur.execute(
+                # Only add user to organization if accepted
+                if status == "accepted":
+                    await conn.execute(
                         """INSERT INTO organization_users (user_id, organization_id)
-                           VALUES (%s, %s)""",
-                        (user_id, organization_id)
+                           VALUES ($1, $2)""",
+                        user_id, organization_id
                     )
 
-            await conn.commit()
-            return True
-
-        except Exception:
-            await conn.rollback()
-            raise
-        finally:
-            await conn.autocommit(True)
-            await db.release_connection(conn)
+                return True
+        return False
 
     async def get_request_by_id(self, request_id: int, user_id: int) -> dict | None:
         """Get request by ID (sender or receiver)"""
@@ -88,7 +77,7 @@ class OrganizationRequestsRepository:
         JOIN organizations o ON oor.organization_id = o.id
         JOIN users s ON oor.sender_id = s.id
         JOIN users r ON oor.receiver_id = r.id
-        WHERE oor.id = %s AND (oor.sender_id = %s OR oor.receiver_id = %s)
+        WHERE oor.id = $1 AND (oor.sender_id = $2 OR oor.receiver_id = $3)
         LIMIT 1
         """
         rows = await db.execute_query(query, (request_id, user_id, user_id))
@@ -99,7 +88,7 @@ class OrganizationRequestsRepository:
         query = """
         SELECT 1
         FROM organization_users ou
-        WHERE ou.organization_id = %s AND ou.user_id = %s
+        WHERE ou.organization_id = $1 AND ou.user_id = $2
         LIMIT 1
         """
         rows = await db.execute_query(query, (organization_id, user_id))
