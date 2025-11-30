@@ -1,29 +1,19 @@
 from src.core.database import db
-import aiomysql
+
 
 class ProjectsRepository:
     async def create_project(self, workspace_id: int, name: str, created_by: int, status: str = 'active') -> int:
         """Create a new project in a workspace"""
-        conn = await db.get_connection()
-        try:
-            await conn.autocommit(False)
-            await conn.begin()
-
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute(
-                    "INSERT INTO projects (name, workspace_id, created_by, status) VALUES (%s, %s, %s, %s)",
-                    (name, workspace_id, created_by, status)
+        async for conn in db.connection():
+            async with conn.transaction():
+                project_record = await conn.fetchrow(
+                    "INSERT INTO projects (name, workspace_id, created_by, status) VALUES ($1, $2, $3, $4) RETURNING id",
+                    name, workspace_id, created_by, status
                 )
-                project_id = cur.lastrowid
-
-            await conn.commit()
-            return project_id
-        except Exception:
-            await conn.rollback()
-            raise
-        finally:
-            await conn.autocommit(True)
-            await db.release_connection(conn)
+                project_id = project_record['id']
+                return project_id
+        # Fallback return in case the async for loop doesn't execute
+        raise Exception("Failed to create project")
 
     async def get_workspace_projects(self, workspace_id: int) -> list[dict]:
         """Get all projects in a workspace"""
@@ -34,7 +24,7 @@ class ProjectsRepository:
         FROM projects p
         JOIN users u ON p.created_by = u.id
         JOIN workspaces w ON p.workspace_id = w.id
-        WHERE p.workspace_id = %s
+        WHERE p.workspace_id = $1
         ORDER BY p.created_at DESC
         """
         return await db.execute_query(query, (workspace_id,))
@@ -48,7 +38,7 @@ class ProjectsRepository:
         FROM projects p
         JOIN users u ON p.created_by = u.id
         JOIN workspaces w ON p.workspace_id = w.id
-        WHERE p.id = %s
+        WHERE p.id = $1
         LIMIT 1
         """
         rows = await db.execute_query(query, (project_id,))
@@ -71,7 +61,7 @@ class ProjectsRepository:
         FROM projects p
                  JOIN users u ON p.created_by = u.id
                  JOIN workspaces w ON p.workspace_id = w.id
-        WHERE w.organization_id = %s
+        WHERE w.organization_id = $1
         ORDER BY p.created_at DESC
         """
         return await db.execute_query(query, (organization_id,))
@@ -82,7 +72,7 @@ class ProjectsRepository:
         SELECT 1
         FROM workspaces w
         JOIN organization_users ou ON w.organization_id = ou.organization_id
-        WHERE w.id = %s AND ou.user_id = %s
+        WHERE w.id = $1 AND ou.user_id = $2
         LIMIT 1
         """
         rows = await db.execute_query(query, (workspace_id, user_id))
@@ -92,23 +82,24 @@ class ProjectsRepository:
         """Update project status"""
         query = """
         UPDATE projects
-        SET status = %s, updated_at = CURRENT_TIMESTAMP
-        WHERE id = %s
+        SET status = $1, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
         """
         await db.execute_query(query, (status, project_id))
         return True
 
     async def delete_project(self, project_id: int) -> bool:
         """Delete project"""
-        query = "DELETE FROM projects WHERE id = %s"
+        query = "DELETE FROM projects WHERE id = $1"
         await db.execute_query(query, (project_id,))
         return True
+
     async def get_team_by_id(self, team_id: int) -> dict | None:
         """Get team by ID"""
         query = """
         SELECT t.id, t.name, t.organization_id
         FROM teams t
-        WHERE t.id = %s
+        WHERE t.id = $1
         LIMIT 1
         """
         rows = await db.execute_query(query, (team_id,))
@@ -116,41 +107,29 @@ class ProjectsRepository:
 
     async def assign_team_to_project(self, project_id: int, team_id: int) -> int:
         """Assign team to project"""
-        conn = await db.get_connection()
-        try:
-            await conn.autocommit(False)
-            await conn.begin()
-
-            async with conn.cursor(aiomysql.DictCursor) as cur:
+        async for conn in db.connection():
+            async with conn.transaction():
                 # Step 1: insert into project_teams
-                await cur.execute(
-                    "INSERT INTO project_teams (project_id, team_id) VALUES (%s, %s)",
-                    (project_id, team_id)
+                project_teams_record = await conn.fetchrow(
+                    "INSERT INTO project_teams (project_id, team_id) VALUES ($1, $2) RETURNING id",
+                    project_id, team_id
                 )
-                project_teams_id = cur.lastrowid
+                project_teams_id = project_teams_record['id']
 
-            # Step 2: insert all team users into project_users
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute(
+                # Step 2: insert all team users into project_users
+                await conn.execute(
                     """
                     INSERT INTO project_users (project_id, user_id)
-                    SELECT %s, ut.user_id
+                    SELECT $1, ut.user_id
                     FROM user_team ut
-                    WHERE ut.team_id = %s;
+                    WHERE ut.team_id = $2;
                     """,
-                    (team_id, project_id)  # <-- Correct order: matches %s placeholders
+                    project_id, team_id  # <-- Correct order: matches $ placeholders
                 )
-                project_users = cur.lastrowid
 
-            await conn.commit()
-            return project_teams_id
-
-        except Exception:
-            await conn.rollback()
-            raise
-        finally:
-            await conn.autocommit(True)
-            await db.release_connection(conn)
+                return project_teams_id
+        # Fallback return in case the async for loop doesn't execute
+        raise Exception("Failed to assign team to project")
 
     async def get_project_teams(self, project_id: int) -> list[dict]:
         """Get all teams assigned to project"""
@@ -159,7 +138,7 @@ class ProjectsRepository:
                t.name as team_name, t.organization_id
         FROM project_teams pt
         JOIN teams t ON pt.team_id = t.id
-        WHERE pt.project_id = %s
+        WHERE pt.project_id = $1
         ORDER BY pt.created_at DESC
         """
         return await db.execute_query(query, (project_id,))
@@ -171,7 +150,7 @@ class ProjectsRepository:
                u.name as user_name, u.email as user_email
         FROM project_users pu
         JOIN users u ON pu.user_id = u.id
-        WHERE pu.project_id = %s
+        WHERE pu.project_id = $1
         ORDER BY u.name ASC
         """
         try:
@@ -195,8 +174,8 @@ class ProjectsRepository:
         JOIN teams t ON pt.team_id = t.id
         JOIN user_team ut ON t.id = ut.team_id
         JOIN users u ON ut.user_id = u.id
-        LEFT JOIN project_users pu ON u.id = pu.user_id AND pu.project_id = %s
-        WHERE pt.project_id = %s
+        LEFT JOIN project_users pu ON u.id = pu.user_id AND pu.project_id = $1
+        WHERE pt.project_id = $2
         ORDER BY t.name ASC, u.name ASC
         """
         try:
@@ -205,4 +184,3 @@ class ProjectsRepository:
         except Exception as e:
             print("error", e)
             raise
-
