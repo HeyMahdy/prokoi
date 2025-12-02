@@ -1,29 +1,19 @@
 from src.core.database import db
-import aiomysql
+
 
 class TeamMembersRepository:
     async def add_team_member(self, team_id: int, user_id: int) -> int:
         """Add user to team"""
-        conn = await db.get_connection()
-        try:
-            await conn.autocommit(False)
-            await conn.begin()
-
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute(
-                    "INSERT INTO user_team (team_id, user_id) VALUES (%s, %s)",
-                    (team_id, user_id)
+        async for conn in db.connection():
+            async with conn.transaction():
+                member_record = await conn.fetchrow(
+                    "INSERT INTO user_team (team_id, user_id) VALUES ($1, $2) RETURNING id",
+                    team_id, user_id
                 )
-                member_id = cur.lastrowid
-
-            await conn.commit()
-            return member_id
-        except Exception:
-            await conn.rollback()
-            raise
-        finally:
-            await conn.autocommit(True)
-            await db.release_connection(conn)
+                member_id = member_record['id']
+                return member_id
+        # Fallback return in case the async for loop doesn't execute
+        raise Exception("Failed to add team member")
 
     async def get_team_members(self, team_id: int) -> list[dict]:
         """Get all team members with user details"""
@@ -31,7 +21,7 @@ class TeamMembersRepository:
         SELECT ut.id, ut.team_id, ut.user_id, u.name, u.email
         FROM user_team ut
         JOIN users u ON ut.user_id = u.id
-        WHERE ut.team_id = %s
+        WHERE ut.team_id = $1
         ORDER BY u.name ASC
         """
         return await db.execute_query(query, (team_id,))
@@ -40,7 +30,7 @@ class TeamMembersRepository:
         """Remove user from team"""
         query = """
         DELETE FROM user_team
-        WHERE team_id = %s AND user_id = %s
+        WHERE team_id = $1 AND user_id = $2
         """
         await db.execute_query(query, (team_id, user_id))
         return True
@@ -50,7 +40,7 @@ class TeamMembersRepository:
         query = """
         SELECT 1
         FROM user_team
-        WHERE team_id = %s AND user_id = %s
+        WHERE team_id = $1 AND user_id = $2
         LIMIT 1
         """
         rows = await db.execute_query(query, (team_id, user_id))
@@ -68,7 +58,7 @@ class TeamMembersRepository:
         SELECT 1
         FROM teams t
         JOIN organization_users ou ON t.organization_id = ou.organization_id
-        WHERE t.id = %s AND ou.user_id = %s
+        WHERE t.id = $1 AND ou.user_id = $2
         LIMIT 1
         """
         rows = await db.execute_query(query, (team_id, user_id))
@@ -79,7 +69,7 @@ class TeamMembersRepository:
         query = """
         SELECT id, name, email
         FROM users
-        WHERE id = %s
+        WHERE id = $1
         LIMIT 1
         """
         rows = await db.execute_query(query, (user_id,))

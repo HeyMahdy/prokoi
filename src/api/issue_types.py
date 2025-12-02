@@ -37,6 +37,7 @@ async def create_organization_issue_type(org_id: int, issue_type_data: IssueType
         # this endpoint will create a global issue type for now
         # In a future enhancement, you could modify the table to support organization-specific types
         issue_type = await issue_types_service.create_issue_type(issue_type_data)
+        print(issue_type)
         return issue_type
     except ValueError as ve:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))

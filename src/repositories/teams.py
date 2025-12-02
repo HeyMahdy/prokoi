@@ -1,36 +1,26 @@
 from src.core.database import db
-import aiomysql
+
 
 class TeamsRepository:
     async def create_team(self, organization_id: int, name: str) -> int:
         """Create a new team in an organization"""
-        conn = await db.get_connection()
-        try:
-            await conn.autocommit(False)
-            await conn.begin()
-
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute(
-                    "INSERT INTO teams (organization_id, name) VALUES (%s, %s)",
-                    (organization_id, name)
+        async for conn in db.connection():
+            async with conn.transaction():
+                team_record = await conn.fetchrow(
+                    "INSERT INTO teams (organization_id, name) VALUES ($1, $2) RETURNING id",
+                    organization_id, name
                 )
-                team_id = cur.lastrowid
-
-            await conn.commit()
-            return team_id
-        except Exception:
-            await conn.rollback()
-            raise
-        finally:
-            await conn.autocommit(True)
-            await db.release_connection(conn)
+                team_id = team_record['id']
+                return team_id
+        # Fallback return in case the async for loop doesn't execute
+        raise Exception("Failed to create team")
 
     async def get_organization_teams(self, organization_id: int) -> list[dict]:
         """Get all teams for an organization"""
         query = """
         SELECT id, organization_id, name
         FROM teams
-        WHERE organization_id = %s
+        WHERE organization_id = $1
         ORDER BY id DESC
         """
         return await db.execute_query(query, (organization_id,))
@@ -40,7 +30,7 @@ class TeamsRepository:
         query = """
         SELECT id, organization_id, name
         FROM teams
-        WHERE id = %s
+        WHERE id = $1
         LIMIT 1
         """
         rows = await db.execute_query(query, (team_id,))
@@ -50,15 +40,15 @@ class TeamsRepository:
         """Update team name"""
         query = """
         UPDATE teams
-        SET name = %s
-        WHERE id = %s
+        SET name = $1
+        WHERE id = $2
         """
         result = await db.execute_query(query, (name, team_id))
         return True  # Assuming success if no exception
 
     async def delete_team(self, team_id: int) -> bool:
         """Delete team"""
-        query = "DELETE FROM teams WHERE id = %s"
+        query = "DELETE FROM teams WHERE id = $1"
         await db.execute_query(query, (team_id,))
         return True  # Assuming success if no exception
 
@@ -68,7 +58,7 @@ class TeamsRepository:
         SELECT 1
         FROM organizations o
         JOIN organization_users ou ON o.id = ou.organization_id
-        WHERE o.id = %s AND ou.user_id = %s
+        WHERE o.id = $1 AND ou.user_id = $2
         LIMIT 1
         """
         rows = await db.execute_query(query, (organization_id, user_id))
@@ -79,7 +69,7 @@ class TeamsRepository:
     async def add_team_to_workspace(self, team_id: int, workspace_id: int) :
         """Add team to workspace"""
         query = """
-        insert into team_workspaces (team_id, workspace_id) values (%s, %s)
+        INSERT INTO team_workspaces (team_id, workspace_id) VALUES ($1, $2)
         """
         result = await db.execute_insert(query, (team_id, workspace_id))
         return result
@@ -87,8 +77,8 @@ class TeamsRepository:
     async def list_workspace_teams(self,workspace_id: int) :
         """List all teams for a project"""
         query = """
-        select * from team_workspaces
-        where workspace_id = %s
+        SELECT * FROM team_workspaces
+        WHERE workspace_id = $1
         """
         rows = await db.execute_query(query, (workspace_id,))
         return rows
@@ -96,8 +86,8 @@ class TeamsRepository:
     async def add_team_to_projects(self, team_id: int, project_id: int) :
         """Add team to workspace"""
         query = """
-        insert into project_teams(team_id,project_id)
-        values (%s, %s) 
+        INSERT INTO project_teams(team_id,project_id)
+        VALUES ($1, $2) 
         """
         result = await db.execute_query(query, (team_id, project_id))
         return result
@@ -106,12 +96,8 @@ class TeamsRepository:
         """List all teams for a project"""
         query = """
         
-        select * from project_teams
-        where project_id = %s
+        SELECT * FROM project_teams
+        WHERE project_id = $1
         """
         rows = await db.execute_query(query, (project_id,))
         return rows
-
-
-
-

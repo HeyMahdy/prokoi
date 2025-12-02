@@ -41,6 +41,7 @@ class Database:
         try:
             row = await conn.fetchrow(query, *params) if params else await conn.fetchrow(query)
             # Return PostgreSQL generated id if available
+            print(row)
             return row["id"] if row and "id" in row else None
         finally:
             await self.release_connection(conn)

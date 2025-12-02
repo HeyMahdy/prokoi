@@ -1,16 +1,27 @@
 from src.core.database import db
-import aiomysql
+from typing import Optional
 
 
 class IssueRepository:
 
     async def create_issue_type(self, name: str):
-        """Create a new issue type"""
-        query = """
+       """Create a new issue type"""
+       query = """
         INSERT INTO issue_types (name) 
-        VALUES (%s)
+        VALUES ($1)
+        RETURNING id
         """
-        return await db.execute_insert(query, [name])
+       try:
+         x = await db.execute_insert(query, [name,])
+         print(x)
+         return x
+       except Exception as e:
+          print(e)
+    
+    
+    
+    
+      
 
     async def get_all_issue_types(self):
         """Get all issue types"""
@@ -26,7 +37,7 @@ class IssueRepository:
         query = """
         SELECT id, name 
         FROM issue_types 
-        WHERE id = %s
+        WHERE id = $1
         """
         result = await db.execute_query(query, [issue_type_id])
         return result[0] if result else None
@@ -35,8 +46,8 @@ class IssueRepository:
         """Update an existing issue type"""
         query = """
         UPDATE issue_types 
-        SET name = %s
-        WHERE id = %s
+        SET name = $1
+        WHERE id = $2
         """
         return await db.execute_query(query, [name, issue_type_id])
 
@@ -44,7 +55,7 @@ class IssueRepository:
         """Delete an issue type"""
         query = """
         DELETE FROM issue_types 
-        WHERE id = %s
+        WHERE id = $1
         """
         return await db.execute_query(query, [issue_type_id])
 
@@ -53,21 +64,21 @@ class IssueRepository:
         query = """
         SELECT COUNT(*) as count 
         FROM issue_types 
-        WHERE name = %s
+        WHERE name = $1
         """
         result = await db.execute_query(query, [name])
         return result[0]['count'] > 0 if result else False
 
     # Issues CRUD operations
     async def create_issue(self, project_id: int, title: str, created_by: int, 
-                          type_id: int = None, description: str = None, 
-                          story_points: int = None, status: str = "open", 
-                          priority: str = "medium", parent_issue_id: int = None):
+                          type_id: Optional[int] = None, description: Optional[str] = None, 
+                          story_points: Optional[int] = None, status: str = "open", 
+                          priority: str = "medium", parent_issue_id: Optional[int] = None):
         """Create a new issue"""
         query = """
         INSERT INTO issues (project_id, type_id, title, description, story_points, 
                           status, priority, created_by, parent_issue_id) 
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         """
         try:
          return await db.execute_insert(query, [project_id, type_id, title, description,
@@ -82,7 +93,7 @@ class IssueRepository:
                i.story_points, i.status, i.priority, i.created_by, i.parent_issue_id,
                i.created_at, i.updated_at
         FROM issues i
-        WHERE i.project_id = %s
+        WHERE i.project_id = $1
         ORDER BY i.created_at DESC
         """
         return await db.execute_query(query, [project_id])
@@ -94,7 +105,7 @@ class IssueRepository:
                i.story_points, i.status, i.priority, i.created_by, i.parent_issue_id,
                i.created_at, i.updated_at
         FROM issues i
-        WHERE i.id = %s
+        WHERE i.id = $1
         """
         result = await db.execute_query(query, [issue_id])
         return result[0] if result else None
@@ -104,11 +115,13 @@ class IssueRepository:
         # Build dynamic query based on provided fields
         set_clauses = []
         values = []
+        index = 1
 
         for field, value in kwargs.items():
             if value is not None:
-                set_clauses.append(f"{field} = %s")
+                set_clauses.append(f"{field} = ${index}")
                 values.append(value)
+                index += 1
 
         if not set_clauses:
             return None
@@ -117,7 +130,7 @@ class IssueRepository:
         query = f"""
         UPDATE issues 
         SET {', '.join(set_clauses)}
-        WHERE id = %s
+        WHERE id = ${index}
         """
         values.append(issue_id)
         result = await db.execute_query(query, values)
@@ -132,12 +145,8 @@ class IssueRepository:
 
     async def _track_workload_on_completion(self, issue_id: int):
         """Track workload when issue is marked as done and remove the assignments"""
-        conn = await db.get_connection()
-        try:
-            await conn.autocommit(False)
-            await conn.begin()
-
-            async with conn.cursor(aiomysql.DictCursor) as cur:
+        async for conn in db.connection():
+            async with conn.transaction():
                 # 1️⃣ Insert workload
                 insert_query = """
                                INSERT INTO user_workload (issue_assignments_id, hours_spent)
@@ -148,40 +157,25 @@ class IssueRepository:
                                         JOIN issues i ON i.project_id = pt.project_id
                                         JOIN issue_assignments ia ON i.id = ia.issue_id
                                         JOIN team_velocity tv ON i.project_id = pt.project_id
-                               WHERE i.id = %s
+                               WHERE i.id = $1
                                  AND ut.user_id = ia.assigned_to
                                  AND ia.assigned_to IS NOT NULL; \
                                """
-                await cur.execute(insert_query, (issue_id,))
+                await conn.execute(insert_query, (issue_id,))
 
-            async with conn.cursor(aiomysql.DictCursor) as cur:
                 # 2️⃣ Delete the assignments that were just inserted
                 delete_query = """
-                DELETE ia
-                FROM issue_assignments ia
-                         JOIN user_team ut ON ut.user_id = ia.assigned_to
-                         JOIN issues i ON i.id = ia.issue_id
-                         JOIN project_teams pt ON pt.project_id = i.project_id AND pt.team_id = ut.team_id
-                WHERE i.id = %s
-                  AND ia.assigned_to IS NOT NULL;
+                DELETE FROM issue_assignments
+                WHERE issue_id = $1
+                  AND assigned_to IS NOT NULL;
                 """
-                await cur.execute(delete_query, (issue_id,))
-
-            # Commit the transaction
-            await conn.commit()
-        except Exception as e:
-            await conn.rollback()
-            print("Error tracking workload:", e)
-            raise
-        finally:
-            await conn.autocommit(True)
-            await db.release_connection(conn)
+                await conn.execute(delete_query, (issue_id,))
 
     async def delete_issue(self, issue_id: int):
         """Delete an issue"""
         query = """
         DELETE FROM issues 
-        WHERE id = %s
+        WHERE id = $1
         """
         return await db.execute_query(query, [issue_id])
 
@@ -192,7 +186,7 @@ class IssueRepository:
                i.story_points, i.status, i.priority, i.created_by, i.parent_issue_id,
                i.created_at, i.updated_at
         FROM issues i
-        WHERE i.project_id = %s AND i.status = %s
+        WHERE i.project_id = $1 AND i.status = $2
         ORDER BY i.created_at DESC
         """
         return await db.execute_query(query, [project_id, status])
@@ -204,7 +198,7 @@ class IssueRepository:
                i.story_points, i.status, i.priority, i.created_by, i.parent_issue_id,
                i.created_at, i.updated_at
         FROM issues i
-        WHERE i.project_id = %s AND i.priority = %s
+        WHERE i.project_id = $1 AND i.priority = $2
         ORDER BY i.created_at DESC
         """
         return await db.execute_query(query, [project_id, priority])
@@ -216,7 +210,7 @@ class IssueRepository:
                i.story_points, i.status, i.priority, i.created_by, i.parent_issue_id,
                i.created_at, i.updated_at
         FROM issues i
-        WHERE i.parent_issue_id = %s
+        WHERE i.parent_issue_id = $1
         ORDER BY i.created_at DESC
         """
         return await db.execute_query(query, [parent_issue_id])
@@ -226,7 +220,7 @@ class IssueRepository:
         query = """
         SELECT COUNT(*) as count 
         FROM issues 
-        WHERE id = %s
+        WHERE id = $1
         """
         result = await db.execute_query(query, [issue_id])
         return result[0]['count'] > 0 if result else False
@@ -248,7 +242,7 @@ class IssueRepository:
             SUM(i.story_points) as total_story_points,
             COUNT(DISTINCT i.created_by) as contributors,
             COUNT(DISTINCT ic.id) as total_comments,
-            TIMESTAMPDIFF(DAY, p.created_at, NOW()) as project_age_days,
+            EXTRACT(DAY FROM (NOW() - p.created_at)) as project_age_days,
             CASE 
                 WHEN COUNT(DISTINCT i.id) = 0 THEN 0
                 ELSE (COUNT(DISTINCT CASE WHEN i.status = 'completed' THEN i.id END) * 100.0 / COUNT(DISTINCT i.id))
@@ -269,10 +263,11 @@ class IssueRepository:
         """Assign an issue to a user"""
         query = """
         INSERT INTO issue_assignments (issue_id, assigned_to, assigned_by)
-        VALUES (%s, %s, %s)
+        VALUES ($1, $2, $3)
         """
         try:
-            return await db.execute_insert(query, [issue_id, assigned_to, assigned_by])
+            result = await db.execute_insert(query, [issue_id, assigned_to, assigned_by])
+            return result or 0
         except Exception as e:
             print("Error assigning issue:", e)
             raise Exception("Failed to assign issue")
@@ -281,7 +276,7 @@ class IssueRepository:
         """Remove assignment from an issue"""
         query = """
         DELETE FROM issue_assignments 
-        WHERE issue_id = %s
+        WHERE issue_id = $1
         """
         try:
             await db.execute_query(query, [issue_id])
@@ -299,7 +294,7 @@ class IssueRepository:
         FROM issue_assignments ia
         LEFT JOIN users u ON ia.assigned_to = u.id
         LEFT JOIN users assigner ON ia.assigned_by = assigner.id
-        WHERE ia.issue_id = %s
+        WHERE ia.issue_id = $1
         LIMIT 1
         """
         result = await db.execute_query(query, [issue_id])
@@ -310,12 +305,12 @@ class IssueRepository:
         query = """
         SELECT COUNT(*) as count 
         FROM issue_assignments 
-        WHERE issue_id = %s
+        WHERE issue_id = $1
         """
         result = await db.execute_query(query, [issue_id])
         return result[0]['count'] > 0 if result else False
 
-    async def get_user_assigned_issues(self, user_id: int, project_id: int = None) -> list[dict]:
+    async def get_user_assigned_issues(self, user_id: int, project_id: Optional[int] = None) -> list[dict]:
         """Get all issues assigned to a user"""
         if project_id:
             query = """
@@ -324,7 +319,7 @@ class IssueRepository:
                    i.created_at, i.updated_at, ia.assigned_at, ia.assigned_by
             FROM issue_assignments ia
             JOIN issues i ON ia.issue_id = i.id
-            WHERE ia.assigned_to = %s AND i.project_id = %s
+            WHERE ia.assigned_to = $1 AND i.project_id = $2
             ORDER BY ia.assigned_at DESC
             """
             params = [user_id, project_id]
@@ -335,7 +330,7 @@ class IssueRepository:
                    i.created_at, i.updated_at, ia.assigned_at, ia.assigned_by
             FROM issue_assignments ia
             JOIN issues i ON ia.issue_id = i.id
-            WHERE ia.assigned_to = %s
+            WHERE ia.assigned_to = $1
             ORDER BY ia.assigned_at DESC
             """
             params = [user_id]
@@ -346,8 +341,8 @@ class IssueRepository:
         """Update existing assignment"""
         query = """
         UPDATE issue_assignments 
-        SET assigned_to = %s, assigned_by = %s, assigned_at = CURRENT_TIMESTAMP
-        WHERE issue_id = %s
+        SET assigned_to = $1, assigned_by = $2, assigned_at = CURRENT_TIMESTAMP
+        WHERE issue_id = $3
         """
         try:
             await db.execute_query(query, [assigned_to, assigned_by, issue_id])
@@ -378,7 +373,7 @@ class IssueRepository:
                 WHEN COUNT(DISTINCT ia.issue_id) = 0 THEN 0
                 ELSE (COUNT(DISTINCT CASE WHEN i.status = 'completed' THEN ia.issue_id END) * 100.0 / COUNT(DISTINCT ia.issue_id))
             END as completion_rate,
-            TIMESTAMPDIFF(DAY, u.created_at, NOW()) as days_since_joined
+            EXTRACT(DAY FROM (NOW() - u.created_at)) as days_since_joined
         FROM users u
         JOIN organization_users ou ON u.id = ou.user_id
         JOIN organizations o ON ou.organization_id = o.id
@@ -413,10 +408,10 @@ class IssueRepository:
                 WHEN s.velocity_target > 0 THEN (SUM(CASE WHEN i.status = 'completed' THEN i.story_points ELSE 0 END) * 100.0 / s.velocity_target)
                 ELSE 0
             END as velocity_achievement_percentage,
-            TIMESTAMPDIFF(DAY, s.start_date, s.end_date) as sprint_duration_days,
+            EXTRACT(DAY FROM (s.end_date - s.start_date)) as sprint_duration_days,
             CASE 
-                WHEN s.end_date < CURDATE() THEN 'completed'
-                WHEN s.start_date <= CURDATE() AND s.end_date >= CURDATE() THEN 'active'
+                WHEN s.end_date < CURRENT_DATE THEN 'completed'
+                WHEN s.start_date <= CURRENT_DATE AND s.end_date >= CURRENT_DATE THEN 'active'
                 ELSE 'upcoming'
             END as sprint_status
         FROM sprints s
@@ -444,7 +439,7 @@ class IssueRepository:
             AVG(tv.avg_hours_per_point) as team_velocity,
             COUNT(DISTINCT ic.id) as team_comments,
             COUNT(DISTINCT ih.id) as team_activities,
-            AVG(TIMESTAMPDIFF(HOUR, i.created_at, i.updated_at)) as avg_issue_resolution_time,
+            AVG(EXTRACT(HOUR FROM (i.updated_at - i.created_at))) as avg_issue_resolution_time,
             COUNT(DISTINCT CASE WHEN i.status = 'completed' THEN i.id END) as completed_issues,
             CASE 
                 WHEN COUNT(DISTINCT i.id) = 0 THEN 0
@@ -465,11 +460,11 @@ class IssueRepository:
         return await db.execute_query(query)
 
     # Label management methods
-    async def create_label(self, project_id: int, name: str, description: str = None, color: str = None):
+    async def create_label(self, project_id: int, name: str, description: Optional[str] = None, color: Optional[str] = None):
         """Create a new label for a project"""
         query = """
         INSERT INTO labels (project_id, name, description, color) 
-        VALUES (%s, %s, %s, %s)
+        VALUES ($1, $2, $3, $4)
         """
         return await db.execute_insert(query, [project_id, name, description, color])
 
@@ -478,7 +473,7 @@ class IssueRepository:
         query = """
         SELECT id, project_id, name, description, color, created_at
         FROM labels 
-        WHERE project_id = %s
+        WHERE project_id = $1
         ORDER BY name ASC
         """
         return await db.execute_query(query, [project_id])
@@ -488,7 +483,7 @@ class IssueRepository:
         query = """
         SELECT id, project_id, name, description, color, created_at
         FROM labels 
-        WHERE id = %s
+        WHERE id = $1
         """
         result = await db.execute_query(query, [label_id])
         return result[0] if result else None
@@ -498,11 +493,13 @@ class IssueRepository:
         # Build dynamic query based on provided fields
         set_clauses = []
         values = []
+        index = 1
         
         for field, value in kwargs.items():
             if value is not None:
-                set_clauses.append(f"{field} = %s")
+                set_clauses.append(f"{field} = ${index}")
                 values.append(value)
+                index += 1
         
         if not set_clauses:
             return None
@@ -510,7 +507,7 @@ class IssueRepository:
         query = f"""
         UPDATE labels 
         SET {', '.join(set_clauses)}
-        WHERE id = %s
+        WHERE id = ${index}
         """
         values.append(label_id)
         return await db.execute_query(query, values)
@@ -519,7 +516,7 @@ class IssueRepository:
         """Delete a label"""
         query = """
         DELETE FROM labels 
-        WHERE id = %s
+        WHERE id = $1
         """
         return await db.execute_query(query, [label_id])
 
@@ -528,25 +525,25 @@ class IssueRepository:
         query = """
         SELECT COUNT(*) as count 
         FROM labels 
-        WHERE id = %s
+        WHERE id = $1
         """
         result = await db.execute_query(query, [label_id])
         return result[0]['count'] > 0 if result else False
 
-    async def label_name_exists_in_project(self, project_id: int, name: str, exclude_label_id: int = None):
+    async def label_name_exists_in_project(self, project_id: int, name: str, exclude_label_id: Optional[int] = None):
         """Check if a label name already exists in a project"""
         if exclude_label_id:
             query = """
             SELECT COUNT(*) as count 
             FROM labels 
-            WHERE project_id = %s AND name = %s AND id != %s
+            WHERE project_id = $1 AND name = $2 AND id != $3
             """
             result = await db.execute_query(query, [project_id, name, exclude_label_id])
         else:
             query = """
             SELECT COUNT(*) as count 
             FROM labels 
-            WHERE project_id = %s AND name = %s
+            WHERE project_id = $1 AND name = $2
             """
             result = await db.execute_query(query, [project_id, name])
         return result[0]['count'] > 0 if result else False
@@ -555,8 +552,9 @@ class IssueRepository:
     async def add_label_to_issue(self, issue_id: int, label_id: int):
         """Add a label to an issue"""
         query = """
-        INSERT IGNORE INTO issue_labels (issue_id, label_id) 
-        VALUES (%s, %s)
+        INSERT INTO issue_labels (issue_id, label_id) 
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING
         """
         return await db.execute_query(query, [issue_id, label_id])
 
@@ -564,7 +562,7 @@ class IssueRepository:
         """Remove a label from an issue"""
         query = """
         DELETE FROM issue_labels 
-        WHERE issue_id = %s AND label_id = %s
+        WHERE issue_id = $1 AND label_id = $2
         """
         return await db.execute_query(query, [issue_id, label_id])
 
@@ -574,7 +572,7 @@ class IssueRepository:
         SELECT il.issue_id, il.label_id, l.name as label_name, l.color as label_color
         FROM issue_labels il
         JOIN labels l ON il.label_id = l.id
-        WHERE il.issue_id = %s
+        WHERE il.issue_id = $1
         ORDER BY l.name ASC
         """
         return await db.execute_query(query, [issue_id])
@@ -587,7 +585,7 @@ class IssueRepository:
                i.created_at, i.updated_at
         FROM issues i
         JOIN issue_labels il ON i.id = il.issue_id
-        WHERE i.project_id = %s AND il.label_id = %s
+        WHERE i.project_id = $1 AND il.label_id = $2
         ORDER BY i.created_at DESC
         """
         return await db.execute_query(query, [project_id, label_id])
@@ -597,7 +595,7 @@ class IssueRepository:
         query = """
         SELECT COUNT(*) as count 
         FROM issue_labels 
-        WHERE issue_id = %s AND label_id = %s
+        WHERE issue_id = $1 AND label_id = $2
         """
         result = await db.execute_query(query, [issue_id, label_id])
         return result[0]['count'] > 0 if result else False
@@ -607,11 +605,7 @@ class IssueRepository:
         query = """
         SELECT COUNT(*) as count 
         FROM issue_labels 
-        WHERE label_id = %s
+        WHERE label_id = $1
         """
         result = await db.execute_query(query, [label_id])
         return result[0]['count'] if result else 0
-
-
-
-

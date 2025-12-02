@@ -25,6 +25,7 @@ class IssueTypesService:
 
             # Create the issue type
             issue_type_id = await self.issue_repo.create_issue_type(issue_type_data.name)
+            print(issue_type_id)
             if not issue_type_id:
                 raise Exception("Failed to create issue type")
 
