@@ -1,5 +1,4 @@
 from src.core.database import db
-import aiomysql
 
 class SkillsRepository:
     async def get_all_skills(self) -> list[dict]:
@@ -16,7 +15,7 @@ class SkillsRepository:
         query = """
         SELECT id, name, created_at
         FROM skills
-        WHERE id = %s
+        WHERE id = $1
         LIMIT 1
         """
         rows = await db.execute_query(query, (skill_id,))
@@ -27,7 +26,7 @@ class SkillsRepository:
         query = """
         SELECT id, name, created_at
         FROM skills
-        WHERE name = %s
+        WHERE name = $1
         LIMIT 1
         """
         rows = await db.execute_query(query, (name,))
@@ -35,34 +34,24 @@ class SkillsRepository:
 
     async def add_skill_to_user(self, user_id: int, skill_id: int, proficiency_level: str) -> int:
         """Add skill to user with proficiency level"""
-        conn = await db.get_connection()
-        try:
-            await conn.autocommit(False)
-            await conn.begin()
-
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                await cur.execute(
+        async for conn in db.connection():
+            async with conn.transaction():
+                user_skill_record = await conn.fetchrow(
                     """INSERT INTO user_skills (user_id, skill_id, proficiency_level, created_at)
-                       VALUES (%s, %s, %s, CURRENT_TIMESTAMP)""",
-                    (user_id, skill_id, proficiency_level)
+                       VALUES ($1, $2, $3, CURRENT_TIMESTAMP) RETURNING id""",
+                    user_id, skill_id, proficiency_level
                 )
-                user_skill_id = cur.lastrowid
-
-            await conn.commit()
-            return user_skill_id
-        except Exception:
-            await conn.rollback()
-            raise
-        finally:
-            await conn.autocommit(True)
-            await db.release_connection(conn)
+                user_skill_id = user_skill_record['id']
+                return user_skill_id
+        # Fallback return in case the async for loop doesn't execute
+        raise Exception("Failed to add skill to user")
 
     async def update_user_skill(self, user_id: int, skill_id: int, proficiency_level: str) -> bool:
         """Update user's skill proficiency level"""
         query = """
         UPDATE user_skills
-        SET proficiency_level = %s
-        WHERE user_id = %s AND skill_id = %s
+        SET proficiency_level = $1
+        WHERE user_id = $2 AND skill_id = $3
         """
         await db.execute_query(query, (proficiency_level, user_id, skill_id))
         return True
@@ -74,7 +63,7 @@ class SkillsRepository:
                s.name as skill_name
         FROM user_skills us
         JOIN skills s ON us.skill_id = s.id
-        WHERE us.user_id = %s
+        WHERE us.user_id = $1
         ORDER BY s.name ASC
         """
         return await db.execute_query(query, (user_id,))
@@ -86,7 +75,7 @@ class SkillsRepository:
                s.name as skill_name
         FROM user_skills us
         JOIN skills s ON us.skill_id = s.id
-        WHERE us.user_id = %s AND us.skill_id = %s
+        WHERE us.user_id = $1 AND us.skill_id = $2
         LIMIT 1
         """
         rows = await db.execute_query(query, (user_id, skill_id))
@@ -96,7 +85,7 @@ class SkillsRepository:
         """Remove skill from user"""
         query = """
         DELETE FROM user_skills
-        WHERE user_id = %s AND skill_id = %s
+        WHERE user_id = $1 AND skill_id = $2
         """
         await db.execute_query(query, (user_id, skill_id))
         return True
@@ -106,7 +95,7 @@ class SkillsRepository:
         query = """
         SELECT 1
         FROM user_skills
-        WHERE user_id = %s AND skill_id = %s
+        WHERE user_id = $1 AND skill_id = $2
         LIMIT 1
         """
         rows = await db.execute_query(query, (user_id, skill_id))
@@ -117,7 +106,7 @@ class SkillsRepository:
         query = """
         SELECT 1
         FROM organization_users ou
-        WHERE ou.organization_id = %s AND ou.user_id = %s
+        WHERE ou.organization_id = $1 AND ou.user_id = $2
         LIMIT 1
         """
         rows = await db.execute_query(query, (organization_id, user_id))
@@ -128,7 +117,7 @@ class SkillsRepository:
         query = """
         SELECT id, name, email
         FROM users
-        WHERE id = %s
+        WHERE id = $1
         LIMIT 1
         """
         rows = await db.execute_query(query, (user_id,))
