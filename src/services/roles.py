@@ -45,7 +45,7 @@ class RoleService:
 
             for r in rows:
                 role_name = r["name"]
-                perm = permission(name=r["p.name"])
+                perm = permission(name=r["name"])
 
                 if role_name in roles_dict:
                     roles_dict[role_name].append(perm)

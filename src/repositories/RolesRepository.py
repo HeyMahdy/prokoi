@@ -62,15 +62,18 @@ class RolesRepository:
         """
         await db.execute_query(query, [role_id, permission_id])
 
-    async def list_role_permissions(self, role_id: int) -> List[dict]:
+    async def list_role_permissions(self, role_id: int):
         query = """
-        SELECT p.id, p.name, p.code
-        FROM role_permissions rp
-        JOIN permissions p ON p.id = rp.permission_id
+        SELECT p.id , p.name 
+        FROM permissions p
+        JOIN role_permissions rp ON p.id = rp.permission_id
         WHERE rp.role_id = $1
         ORDER BY p.name ASC
         """
-        return await db.execute_query(query, [role_id])
+        try:
+           return await db.execute_query(query, [role_id,])
+        except Exception as e:
+            print(e)
 
     async def get_role_by_id(self, role_id: int) -> Optional[dict]:
         query = """
