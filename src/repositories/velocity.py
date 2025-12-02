@@ -1,5 +1,5 @@
 from src.core.database import db
-import aiomysql
+
 
 class VelocityRepository:
     async def get_team_velocity_history(self, team_id: int) -> list[dict]:
@@ -10,7 +10,7 @@ class VelocityRepository:
         FROM team_velocity tv
         JOIN teams t ON tv.team_id = t.id
         JOIN projects p ON tv.project_id = p.id
-        WHERE tv.team_id = %s
+        WHERE tv.team_id = $1
         ORDER BY tv.updated_at DESC
         """
         return await db.execute_query(query, (team_id,))
@@ -23,7 +23,7 @@ class VelocityRepository:
         FROM team_velocity tv
         JOIN teams t ON tv.team_id = t.id
         JOIN projects p ON tv.project_id = p.id
-        WHERE tv.team_id = %s AND tv.project_id = %s
+        WHERE tv.team_id = $1 AND tv.project_id = $2
         LIMIT 1
         """
         rows = await db.execute_query(query, (team_id, project_id))
@@ -31,30 +31,21 @@ class VelocityRepository:
 
     async def upsert_team_velocity(self, team_id: int, project_id: int, avg_hours_per_point: float) -> bool:
         """Insert or update team velocity for a project"""
-        conn = await db.get_connection()
-        try:
-            await conn.autocommit(False)
-            await conn.begin()
-
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                # Use INSERT ... ON DUPLICATE KEY UPDATE for upsert
-                await cur.execute(
+        async for conn in db.connection():
+            async with conn.transaction():
+                # Use INSERT ... ON CONFLICT for upsert in PostgreSQL
+                await conn.execute(
                     """INSERT INTO team_velocity (team_id, project_id, avg_hours_per_point, created_at, updated_at)
-                       VALUES (%s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                       ON DUPLICATE KEY UPDATE
-                       avg_hours_per_point = VALUES(avg_hours_per_point),
+                       VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                       ON CONFLICT (team_id, project_id)
+                       DO UPDATE SET
+                       avg_hours_per_point = EXCLUDED.avg_hours_per_point,
                        updated_at = CURRENT_TIMESTAMP""",
-                    (team_id, project_id, avg_hours_per_point)
+                    team_id, project_id, avg_hours_per_point
                 )
-
-            await conn.commit()
-            return True
-        except Exception:
-            await conn.rollback()
-            raise
-        finally:
-            await conn.autocommit(True)
-            await db.release_connection(conn)
+                return True
+        # Fallback return in case the async for loop doesn't execute
+        raise Exception("Failed to upsert team velocity")
 
     async def user_has_team_access(self, user_id: int, team_id: int) -> bool:
         """Check if user has access to team"""
@@ -63,7 +54,7 @@ class VelocityRepository:
         FROM user_team ut
         JOIN teams t ON ut.team_id = t.id
         JOIN organization_users ou ON t.organization_id = ou.organization_id
-        WHERE ut.team_id = %s AND ou.user_id = %s
+        WHERE ut.team_id = $1 AND ou.user_id = $2
         LIMIT 1
         """
         rows = await db.execute_query(query, (team_id, user_id))
@@ -76,7 +67,7 @@ class VelocityRepository:
         FROM projects p
         JOIN workspaces w ON p.workspace_id = w.id
         JOIN organization_users ou ON w.organization_id = ou.organization_id
-        WHERE p.id = %s AND ou.user_id = %s
+        WHERE p.id = $1 AND ou.user_id = $2
         LIMIT 1
         """
         rows = await db.execute_query(query, (project_id, user_id))
@@ -87,7 +78,7 @@ class VelocityRepository:
         query = """
         SELECT 1
         FROM project_teams pt
-        WHERE pt.team_id = %s AND pt.project_id = %s
+        WHERE pt.team_id = $1 AND pt.project_id = $2
         LIMIT 1
         """
         rows = await db.execute_query(query, (team_id, project_id))

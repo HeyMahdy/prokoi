@@ -162,7 +162,7 @@ async def list_project_team_members(project_id: int, request: Request):
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get project team members")
 
-@router.get("/projects/{project_id}/teams/{team_id}/velocity", response_model=VelocityResponse, dependencies=[Depends(require_permissions(["all", "view_team_velocity"]))])
+@router.get("/projects/{project_id}/teams/{team_id}/velocity", dependencies=[Depends(require_permissions(["all", "view_team_velocity"]))])
 async def get_team_project_velocity(project_id: int, team_id: int, request: Request):
     """Get team velocity for specific project"""
     user = getattr(request.state, "user", None)
@@ -178,7 +178,7 @@ async def get_team_project_velocity(project_id: int, team_id: int, request: Requ
         else:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get team project velocity")
 
-@router.put("/projects/{project_id}/teams/{team_id}/velocity", response_model=VelocityResponse, dependencies=[Depends(require_permissions(["all", "edit_team_velocity"]))])
+@router.put("/projects/{project_id}/teams/{team_id}/velocity", dependencies=[Depends(require_permissions(["all", "edit_team_velocity"]))])
 async def update_team_project_velocity(project_id: int, team_id: int, velocity_data: VelocityUpdate, request: Request):
     """Update team velocity for specific project"""
     user = getattr(request.state, "user", None)
