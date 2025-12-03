@@ -129,3 +129,14 @@ class RolesRepository:
         return results
       except Exception as e:
           raise ValueError("error has come",e)
+      
+
+    async def assign_user_role(self, user_id: int, role_id: int):
+     query = """
+        INSERT INTO user_role (user_id, role_id)
+        VALUES ($1, $2)
+    """
+     try:
+        return await db.execute_insert(query, [user_id, role_id])
+     except Exception as e:
+        raise ValueError(f"Error assigning role: {e}")

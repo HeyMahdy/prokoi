@@ -103,3 +103,18 @@ async def get_all_role_permissions(org_id: int, request: Request):
         return {"message": "success", "permissions": permissions}
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    
+@router.post(
+    "/{role_id}/roles/{user_id}/users",
+    status_code=status.HTTP_200_OK,
+    description="add roles to users"
+)
+async def add_role_to_user(role_id:int,user_id:int,request : Request):
+    user = getattr(request.state,"user",None)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authorized")
+    try:
+        results = await roleService.add_role_to_user(user_id,role_id)
+        return {"message":"success"}
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

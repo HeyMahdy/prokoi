@@ -45,11 +45,6 @@ async def list_organization_workspaces(org_id: int, request: Request, workspaces
     try:
         results = []
         workspaces = await workspacesService.get_organization_workspaces(org_id, user["id"])
-        print("this is workspaces")
-        for ws in workspaces:
-            f = await view.can_view_workspace(ws["id"], user["id"])
-            if(f):
-                results.append(ws)
         return workspaces
     except Exception as e:
         if "Access denied" in str(e):

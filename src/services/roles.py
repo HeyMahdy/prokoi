@@ -60,6 +60,14 @@ class RoleService:
 
         except Exception as e:
             raise Exception("Failed to get all role permissions", e)
+    
+    async def add_role_to_user(self,user_id:int,role_id:int):
+        try:
+            rows = await self.role_repository.assign_user_role(user_id,role_id)
+            return rows
+        except Exception as e:
+            print(e)
+            raise Exception("failed to add role to user")
 
 
 
