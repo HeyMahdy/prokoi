@@ -12,3 +12,9 @@ services:
     restart: always
     ports:
       - "8001:8001"
+    networks:
+      - prokoi-network
+
+networks:
+  prokoi-network:
+    external: true
