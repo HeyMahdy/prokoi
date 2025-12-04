@@ -5,6 +5,7 @@ from src.schemas.users import *
 from src.services.auth import AuthService
 from src.services.users import UsersService
 from src.schemas.users import UserLogin
+from src.repositories.users import UserRepository
 
 router = APIRouter(
     prefix="/users",       # ✅ every route starts with /users
@@ -32,3 +33,13 @@ async def login(user_credentials: UserLogin):
     auth_service = AuthService()
     return await auth_service.login(user_credentials)
 
+@router.post("/get-user-id-by-email", response_model=UserIdResponse)
+async def get_user_id_by_email(email_request: EmailRequest):
+    """Get user ID by email address"""
+    user_repo = UserRepository()
+    user = await user_repo.find_user_by_email(email_request.email)
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return UserIdResponse(user_id=user["id"])

@@ -4,7 +4,6 @@ CREATE TABLE skills (
     INDEX idx_skills_name (name),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
--- User skills table (many-to-many)
 CREATE TABLE user_skills (
     user_id INT NOT NULL,
     skill_id INT NOT NULL,
@@ -26,7 +25,6 @@ CREATE TABLE issue_skill_requirements (
     FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
     FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
 );
--- User capacity table
 CREATE TABLE user_capacity (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -34,7 +32,6 @@ CREATE TABLE user_capacity (
     weekly_hours DECIMAL(4, 2) DEFAULT 40.0,
     INDEX idx_user_capacity_user_id (user_id),
     INDEX idx_user_capacity_organization_id (organization_id),
-    -- maximum allowed workload
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -48,13 +45,11 @@ CREATE TABLE user_workload (
     -- NULL for general project work
     hours_spent DECIMAL(5, 2) DEFAULT 0.0,
     INDEX idx_user_workload_issue_assignments_id (issue_assignments_id),
-    -- start of work week
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (issue_assignments_id) REFERENCES issue_assignments(id) ON DELETE
     SET NULL
 );
--- Assignment history table
 CREATE TABLE issue_assignments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     issue_id INT NOT NULL,

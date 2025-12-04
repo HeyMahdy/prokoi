@@ -22,7 +22,8 @@ from src.api.project_analysis import router as project_analysis_router
 from src.api.team_performance import router as team_performance_router
 from src.api.user_performance import router as user_performance_router
 from src.api.sprint_velocity import router as sprint_velocity_router
-
+from src.notification.websocket import router as web
+from src.api.notification import router as noti
 # Add to your existing routers
 
 
@@ -32,7 +33,6 @@ async def lifespan(app: FastAPI):
     await db.create_pool()
     yield
     await db.close()
-
 
 
 app = FastAPI(lifespan=lifespan)
@@ -50,8 +50,12 @@ app.add_middleware(
         "/docs",
         "/openapi.json",
         "/",
+        "/users/get-user-id-by-email",
+        "/api/notifications/WebSocket/{user_id}/WS_CONNECTION",
+        "/api/notifications/ACKNOWLEDGE"
     ],
 )
+
 
 # 1. CORS Middleware (Outermost - runs first)
 app.add_middleware(
@@ -69,6 +73,8 @@ app.include_router(team_performance_router)
 app.include_router(teams_router)
 app.include_router(team_members_router)
 app.include_router(roles_router)
+app.include_router(web)
+app.include_router(noti)
 
 # Add to your existing routers
 app.include_router(workspaces_router)

@@ -79,6 +79,7 @@ class IssueRepository:
         INSERT INTO issues (project_id, type_id, title, description, story_points, 
                           status, priority, created_by, parent_issue_id) 
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING id
         """
         try:
          return await db.execute_insert(query, [project_id, type_id, title, description,
@@ -290,10 +291,11 @@ class IssueRepository:
         query = """
         SELECT ia.id, ia.issue_id, ia.assigned_to, ia.assigned_by, ia.assigned_at,
                u.name as assigned_to_name, u.email as assigned_to_email,
-               assigner.name as assigned_by_name, assigner.email as assigned_by_email
+               assigner.name as assigned_by_name, assigner.email as assigned_by_email , iss.title
         FROM issue_assignments ia
         LEFT JOIN users u ON ia.assigned_to = u.id
         LEFT JOIN users assigner ON ia.assigned_by = assigner.id
+        LEFT JOIN issues iss on iss.id = ia.issue_id
         WHERE ia.issue_id = $1
         LIMIT 1
         """

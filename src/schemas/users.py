@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime
@@ -23,3 +22,9 @@ class UserResponse(BaseUserSchema):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+class UserIdResponse(BaseModel):
+    user_id: int
+
+class EmailRequest(BaseModel):
+    email: EmailStr

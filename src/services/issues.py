@@ -3,7 +3,7 @@ from src.repositories.users import UserRepository
 from src.schemas.issues import IssueCreate, IssueUpdate, IssueResponse, IssueAssignmentCreate, IssueAssignmentResponse, IssueStatusUpdate, IssueWithAssignment
 from typing import List, Optional
 from datetime import datetime
-
+from src.notification.streams import publish_message
 
 class IssuesService:
     def __init__(self):
@@ -186,9 +186,14 @@ class IssuesService:
 
             # Get the assignment details
             assignment = await self.issue_repo.get_issue_assignment(issue_id)
+            print(assignment)
+
             if not assignment:
                 raise Exception("Assignment not found after creation")
-
+            await publish_message(
+    user_id=assignment_data.assigned_to,
+    message=f"task {assignment['title']}"
+)
             return IssueAssignmentResponse(**assignment)
 
         except ValueError:
